@@ -1,0 +1,6 @@
+.venv/
+Outputs/
+log/
+workbooks/
+__pycache__/
+
