@@ -14,6 +14,7 @@ class VegQAReportConfig(BaseQAReportConfig):
     # --- Configuration ---
     group_name_source_sheet: str = "VegTripGrouping"  # The sheet name to look for GroupName values. Adjust if your grouping variable is in a different sheet.
     report_title: str = "Vegetation QA Report"
+    data_url = "https://mdms.essolutions.com.au/workbooks/download/5"
 
 # VegTripGrouping: TripID	startDate	endDate	totalPlotsSampled	totalTransectsSampled
 # VegCommunitySurvey: TripID	SamplingUnitID	SampleDate	CanopyCover	LitterCover	LichenMossesCover	BareGroundCover	DeadTreeCover	LogCover	PlantBases	PercentInundated	WaterDepth	QualityDepth	SoilMoisture	DurationDry	QualityDurationDry	MaxDepthPrev	QualityMaxDepthPrev	DurationPrevInundation	QualityPrevInundation	Comment

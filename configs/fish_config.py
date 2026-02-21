@@ -12,6 +12,7 @@ class FishQAReportConfig(BaseQAReportConfig):
     # --- Configuration ---
     group_name_source_sheet: str = "FishSurveyEffort"  # The sheet name to look for GroupName values. Adjust if your grouping variable is in a different sheet.
     report_title: str = "Fish QA Report"
+    data_url = "https://mdms.essolutions.com.au/workbooks/download/4"
 
     # Prepare data table  - need a generic python way to define these joins (e.g. dictionary) and a function to do the joins based on the dictionary. This will allow us to easily add more tables and joins in the future without changing the code structure.
     # FishSurveyEffort: SamplePointName	SampleDate	SampleType	SampleNumber	StartDateTime	EndDateTime	TotalTripSamples	Pooled	SampleDurationSec	SeineArea	CompDataID	Comment
