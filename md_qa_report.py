@@ -1,4 +1,5 @@
 from pathlib import Path
+import datetime
 
 class MarkdownQAReport:
     """
@@ -16,7 +17,8 @@ class MarkdownQAReport:
         self.output_path = output_path
         self.group_name = group_name
         self.report_title_str = report_title_str
-        self.filename = self._make_safe(f"{group_name}_{report_title_str}.md")
+        date_stamp = datetime.datetime.now().strftime("%Y%m%d")
+        self.filename = self._make_safe(f"{group_name}_{report_title_str}_{date_stamp}.md")
         self.report_path = output_path / self.filename
         self.content = ""
 
@@ -83,11 +85,12 @@ class MarkdownQAReport:
         for summary_name, (table_name, summary_df) in data_summaries.items():
             self.content += f"### Table {table_counter}: {summary_name}\n\n"
             table_counter += 1
-            if summary_name in data_summary_definitions and "note" in data_summary_definitions[summary_name]:
-                self.content += f"{data_summary_definitions[summary_name]['note']}\n\n"
+
             if summary_df.empty:
-                self.content += "No data available for this summary.\n\n"
+                self.content += "No data supplied that supports this summary.\n\n"
                 continue
+            elif summary_name in data_summary_definitions and "note" in data_summary_definitions[summary_name]:
+                self.content += f"{data_summary_definitions[summary_name]['note']}\n\n"
             self.content += f"*Source Table: {table_name}*\n\n"
             
             headers = [str(c).replace("\n", "<br>") for c in summary_df.columns]

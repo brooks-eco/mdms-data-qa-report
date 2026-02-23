@@ -52,10 +52,21 @@ execution script: `python QA_report.py`
 Python.  Requirements (key libraries)
 
         numpy
-        pandas>
+        pandas
         matplotlib
         reportlab
         openpyxl
+
+```bash
+
+# Install dependencies
+pip install -r requirements.txt
+
+#run script
+python.exe QA_report.py
+
+```
+
 
 ## Disclaimer
 

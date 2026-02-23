@@ -15,6 +15,7 @@ from reportlab.lib.units import cm
 from reportlab.lib.enums import TA_CENTER
 from reportlab.pdfbase import pdfmetrics
 from html import escape
+import datetime
 
 
 class PDFQAReport:
@@ -33,7 +34,9 @@ class PDFQAReport:
         self.output_path = output_path
         self.group_name = group_name
         self.report_title_str = report_title_str
-        self.filename = self._make_safe(f"{group_name}_{report_title_str}.pdf")
+        # get date-time stamp to include in filename
+        date_stamp = datetime.datetime.now().strftime("%Y%m%d")
+        self.filename = self._make_safe(f"{group_name}_{report_title_str}_{date_stamp}.pdf")
         self.pdf_report_path = output_path / self.filename
         
         self.doc = SimpleDocTemplate(
@@ -176,6 +179,7 @@ class PDFQAReport:
             [Paragraph('missmatched:', self.bold_style), Paragraph('Count of records in one column that does not match another column (e.g. count of samples vs count of unique SamplingUnitsIDs.  Flagged for review but can be a valid outcome of the sampling design.', self.normal_style)],
             [Paragraph('records', self.bold_style), Paragraph('records is a count of the number of data records in the column. This will include counts of 0 (zero) therefore it is possible to have a record count that exceeds the sum.', self.normal_style)],
             [Paragraph('NaN:', self.bold_style), Paragraph('Not a Number (i.e. missing value).  Flagged for review.', self.normal_style)],
+            [Paragraph('numbers:', self.bold_style), Paragraph('are printed to 2 decimal places for display; summaries use the full precision.', self.normal_style)],
         ]
         glossary_table = Table(glossary_data, colWidths=[3*cm, None])
         glossary_table.setStyle(TableStyle([
@@ -197,20 +201,19 @@ class PDFQAReport:
             self.elements.append(CondPageBreak(8*cm))
             self.elements.append(Paragraph(f"Table {table_counter}: {summary_name}", self.styles["Heading2"]))
             table_counter += 1
-
-            if summary_name in data_summary_definitions and "note" in data_summary_definitions[summary_name]:
+            if summary_df.empty:
+                self.elements.append(Paragraph("      No data supplied that supports this summary.", self.styles["Italic"]))
+                continue
+            elif summary_name in data_summary_definitions and "note" in data_summary_definitions[summary_name]:
                 self.elements.append(Paragraph(data_summary_definitions[summary_name]["note"], self.normal_style))
                 self.elements.append(Spacer(1, 6))
 
-            if summary_df.empty:
-                self.elements.append(Paragraph("      No data available for this summary.", self.styles["Italic"]))
-                continue
             
             self.elements.append(Paragraph(f"Source Table: {table_name}", self.styles["Italic"]))
             self.elements.append(Spacer(1, 6))
             
             numeric_cols = summary_df.select_dtypes(include=["number"]).columns
-            summary_df[numeric_cols] = summary_df[numeric_cols].round(4)
+            summary_df[numeric_cols] = summary_df[numeric_cols].round(2)
             
             df_str = summary_df.astype(str)
             available_width = self.doc.width
@@ -252,7 +255,11 @@ class PDFQAReport:
                 row_data = []
                 for i, cell in enumerate(row):
                     style = cell_para_left_style if col_alignments[i] == 0 else cell_para_centre_style
-                    row_data.append(Paragraph(escape(cell).replace("\n", "<br/>"), style))
+                    # if cell type is a string
+                    if isinstance(cell, str):
+                        row_data.append(Paragraph(escape(cell).replace("\n", "<br/>"), style))
+                    else:
+                        row_data.append(Paragraph(str(cell), style))
                 data.append(row_data)
 
             t = Table(data, colWidths=col_widths)

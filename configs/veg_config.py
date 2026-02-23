@@ -1,8 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Dict, List, Any
-from configs.config_base import BaseQAReportConfig
-
-
+from config import BaseQAReportConfig
 
 
 @dataclass
@@ -16,82 +14,23 @@ class VegQAReportConfig(BaseQAReportConfig):
     report_title: str = "Vegetation QA Report"
     data_url = "https://mdms.essolutions.com.au/workbooks/download/5"
 
-# VegTripGrouping: TripID	startDate	endDate	totalPlotsSampled	totalTransectsSampled
-# VegCommunitySurvey: TripID	SamplingUnitID	SampleDate	CanopyCover	LitterCover	LichenMossesCover	BareGroundCover	DeadTreeCover	LogCover	PlantBases	PercentInundated	WaterDepth	QualityDepth	SoilMoisture	DurationDry	QualityDurationDry	MaxDepthPrev	QualityMaxDepthPrev	DurationPrevInundation	QualityPrevInundation	Comment
-# VegSpeciesAbundance: SamplingUnitID	SampleDate	Stratum	ScientificName	PercentCover	Comment
-# VegRecruitment: SamplingUnitID	SampleDate	ScientificName	Stage0Recruit	Stage1Recruit	Stage2Recruit	Stage3Recruit	Stage4Recruit	Comment
-# VegSamplingUnits: SamplingUnitID	SamplePointName	TransectID	QuadratPlotID	SamplingUnitType	Elevation	ANAEType	LatitudeCentroid	LongitudeCentroid	Active	Comment
-
+    # VegTripGrouping: TripID	startDate	endDate	totalPlotsSampled	totalTransectsSampled
+    # VegCommunitySurvey: TripID	SamplingUnitID	SampleDate	CanopyCover	LitterCover	LichenMossesCover	BareGroundCover	DeadTreeCover	LogCover	PlantBases	PercentInundated	WaterDepth	QualityDepth	SoilMoisture	DurationDry	QualityDurationDry	MaxDepthPrev	QualityMaxDepthPrev	DurationPrevInundation	QualityPrevInundation	Comment
+    # VegSpeciesAbundance: SamplingUnitID	SampleDate	Stratum	ScientificName	PercentCover	Comment
+    # VegRecruitment: SamplingUnitID	SampleDate	ScientificName	Stage0Recruit	Stage1Recruit	Stage2Recruit	Stage3Recruit	Stage4Recruit	Comment
+    # VegSamplingUnits: SamplingUnitID	SamplePointName	TransectID	QuadratPlotID	SamplingUnitType	Elevation	ANAEType	LatitudeCentroid	LongitudeCentroid	Active	Comment
 
     # worksheet names and their expected columns based on the provided Excel file structure.
     # adjust to the commented columns above.
-    workbook: Dict[str, List[str]] = field(default_factory=lambda: {
-        "VegTripGrouping": [
-            "TripID",
-            "startDate",
-            "endDate",
-            "totalPlotsSampled",
-            "totalTransectsSampled",
-        ],
-        "VegCommunitySurvey": [
-            "TripID",
-            "SamplingUnitID",
-            "SampleDate",
-            "CanopyCover",
-            "LitterCover",
-            "LichenMossesCover",
-            "BareGroundCover",
-            "DeadTreeCover",
-            "LogCover",
-            "PlantBases",
-            "PercentInundated",
-            "WaterDepth",
-            "QualityDepth",
-            "SoilMoisture",
-            "DurationDry",
-            "QualityDurationDry",
-            "MaxDepthPrev",
-            "QualityMaxDepthPrev",
-            "DurationPrevInundation",
-            "QualityPrevInundation",
-            "Comment",
-        ],
-        "VegSpeciesAbundance": [
-            "SamplingUnitID",
-            "SampleDate",
-            "Stratum",
-            "ScientificName",
-            "PercentCover",
-            "Comment",
-        ],
-        "VegRecruitment": [
-            "SamplingUnitID",
-            "SampleDate",
-            "ScientificName",
-            "Stage0Recruit",
-            "Stage1Recruit",
-            "Stage2Recruit",
-            "Stage3Recruit",
-            "Stage4Recruit",
-            "Comment",
-        ],
-        "VegSamplingUnits": [
-            "SamplingUnitID",
-            "SamplePointName",
-            "TransectID",
-            "QuadratPlotID",
-            "SamplingUnitType",
-            "Elevation",
-            "ANAEType",
-            "LatitudeCentroid",
-            "LongitudeCentroid",
-            "Active",
-            "Comment",
-        ],
-        
-    })
-
-
+    workbook: List[str] = field(
+        default_factory=lambda: [
+            "VegTripGrouping",
+            "VegCommunitySurvey",
+            "VegSpeciesAbundance",
+            "VegRecruitment",
+            "VegSamplingUnits",
+        ]
+    )
 
     # Join definitions - this will be a dictionary where keys are the target table names and values are dictionaries that specify the join( right) table, the columns to join on, and the type of join. This will allow us to easily add more joins in the future without changing the code structure.
 
@@ -112,7 +51,6 @@ class VegQAReportConfig(BaseQAReportConfig):
             "how": "left",
         },
     })
-
 
     # Summaries required - per joined table, we will define the summaries we want to generate. This will be a dictionary where keys are the summary names and values are the logic to generate them. This will allow us to easily add more summaries in the future without changing the code structure.
     # 1. Sampling Occasions and Effort - to check that all expected data was supplied and identify gaps in the data.
@@ -220,23 +158,25 @@ class VegQAReportConfig(BaseQAReportConfig):
     })
 
     # plot of multiple pie charts showing species composition (percent cover) by plot and sampling time. This will help identify if there are any plots or sampling times that have unusual species composition that may indicate data quality issues.
-    plot_definitions: Dict[str, Dict[str, Any]] = field(default_factory=lambda: {
-        "PLOTS: most common 5 taxa x SamplingUnitID x SampleDate": {
-            "type": "pie",
-            "table": "VegSpeciesAbundance",
-            "group_by": ["SamplePointName", "QuadratPlotID", "SampleDate"],
-            "category": "ScientificName",
-            "value": "PercentCover",
-            "filter": {"TransectID": "is null"},
-        },
-
-        "TRANSECTS: most common 5 taxa x TransectID x SampleDate": {
-            "type": "pie",
-            "table": "VegSpeciesAbundance",
-            "group_by": ["SamplePointName", "TransectID", "SampleDate"],
-            "category": "ScientificName",
-            "value": "PercentCover",
-            "filter": {"TransectID": "is not null"},
-        
-        },
-    })
+    plot_definitions: Dict[str, Dict[str, Any]] = field(
+        default_factory=lambda: {
+            "PLOTS: most common 5 taxa x SamplingUnitID x SampleDate": {
+                "note:": "",
+                "type": "pie",
+                "table": "VegSpeciesAbundance",
+                "group_by": ["SamplePointName", "QuadratPlotID", "SampleDate"],
+                "category": "ScientificName",
+                "value": "PercentCover",
+                "filter": {"TransectID": "is null"},
+            },
+            "TRANSECTS: most common 5 taxa x TransectID x SampleDate": {
+                "note:": "",
+                "type": "pie",
+                "table": "VegSpeciesAbundance",
+                "group_by": ["SamplePointName", "TransectID", "SampleDate"],
+                "category": "ScientificName",
+                "value": "PercentCover",
+                "filter": {"TransectID": "is not null"},
+            },
+        }
+    )

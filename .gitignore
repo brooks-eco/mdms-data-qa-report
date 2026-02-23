@@ -4,3 +4,4 @@ log/
 *.xlsx
 __pycache__/
 
+.cspell/

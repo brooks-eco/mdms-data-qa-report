@@ -5,7 +5,7 @@ from pandas.api.types import is_numeric_dtype, is_datetime64_any_dtype
 import matplotlib
 import matplotlib.pyplot as plt
 from pathlib import Path
-from configs.config_base import get_config
+from config import get_config
 from pdf_qa_report import PDFQAReport
 from md_qa_report import MarkdownQAReport
 import datetime
@@ -36,7 +36,7 @@ def load_data(filepath, group_name_source, workbook_def, testing_group, filter_d
     Args:
         filepath (Path): Path to the Excel file.
         group_name_source (str): Sheet name to check for 'GroupName' to determine relevant groups.
-        workbook_def (dict): Dictionary defining expected sheets and columns.
+        workbook_def (list): A list of sheet names to load from the workbook.
         testing_group (str): Specific group name to filter for (optional).
         filter_date (bool): Whether to filter data by date.
         start (datetime): Start date for filtering.
@@ -71,10 +71,12 @@ def load_data(filepath, group_name_source, workbook_def, testing_group, filter_d
     print(f"Processing report for Group(s): {', '.join(map(str, relevant_group_names))}")
     
     dfs = {}
-    for sheet_name in workbook_def.keys():
+    for sheet_name in workbook_def:
         if sheet_name in xls.sheet_names:
             print(f"Reading sheet: {sheet_name}")
             df = pd.read_excel(xls, sheet_name=sheet_name)
+            # Clean column names (strip whitespace) to prevent mismatch errors
+            #df.columns = df.columns.astype(str).str.strip()
             # filter data to the specified date range if the date column exists
             date_col = (
                 "SampleDate"
@@ -189,40 +191,36 @@ def filter_df(filter, df, task_type=None, task_name=None):
             ):
                 df = df[df[filter_col].isna()]
             # e.g. col_name: {"<": value} or {">": value} or {"==": value} or {"!=": value}
-        elif isinstance(filter_condition, dict):
-            for op, val in filter_condition.items():
-                if op == "<":
-                    df = df[df[filter_col] < val]
-                elif op == ">":
-                    df = df[df[filter_col] > val]
-                elif op == "==":
-                    df = df[df[filter_col] == val]
-                elif op == "!=":
-                    df = df[df[filter_col] != val]
-                elif op == "in" and isinstance(val, (list, tuple, set)):
-                    df = df[df[filter_col].isin(val)]
-                elif op == "not in" and isinstance(val, (list, tuple, set)):
-                    df = df[~df[filter_col].isin(val)]
-                else:
-                    print(
-                        f"Warning: Unsupported operator '{op}' in filter condition for column '{filter_col}' in {task_type} definition '{task_name}'. Skipping this filter."
-                    )
+            elif isinstance(filter_condition, dict):
+                for op, val in filter_condition.items():
+                    if op == "<":
+                        df = df[df[filter_col] < val]
+                    elif op == ">":
+                        df = df[df[filter_col] > val]
+                    elif op == "==":
+                        df = df[df[filter_col] == val]
+                    elif op == "!=":
+                        df = df[df[filter_col] != val]
+                    elif op == "in" and isinstance(val, (list, tuple, set)):
+                        df = df[df[filter_col].isin(val)]
+                    elif op == "not in" and isinstance(val, (list, tuple, set)):
+                        df = df[~df[filter_col].isin(val)]
+                    else:
+                        print(
+                            f"Warning: Unsupported operator '{op}' in filter condition for column '{filter_col}' in {task_type} definition '{task_name}'. Skipping this filter."
+                        )
             else:
                 print(
-                    f"Warning: Unsupported filter condition type '{type(filter_condition)}' for column '{filter_col}' in {task_type} definition '{task_name}'. Skipping this filter."
+                    f"Warning: Unsupported filter condition '{filter_condition}' for column '{filter_col}' in {task_type} definition '{task_name}'. Skipping this filter."
                 )
         else:
             print(
-                f"Warning: Unsupported filter condition '{filter_condition}' for column '{filter_col}' in {task_type} definition '{task_name}'. Skipping this filter."
+                f"Warning: Filter column '{filter_col}' not found in table. Skipping this filter."
             )
-    else:
-        print(
-            f"Warning: Filter column '{filter_col}' not found in table. Skipping this filter."
-        )
     return df
 
 
-def create_single_pie_plot(ax, df, label_col, value_col, title_str):
+def create_single_pie_plot(ax, df, label_col, value_col, title_str, color_map=None):
     """
     Generates a single pie chart on the provided axes.
 
@@ -232,6 +230,7 @@ def create_single_pie_plot(ax, df, label_col, value_col, title_str):
         label_col (str): Column name for the pie slice labels.
         value_col (str): Column name for the pie slice values.
         title_str (str): Title for the plot.
+        color_map (dict): Optional dictionary mapping labels to colors.
     """
     # Aggregate values by label_col to combine multiple entries (e.g. strata) for the same category
     # if value_col is not a number or is the same as the category then aggregate by count
@@ -240,20 +239,27 @@ def create_single_pie_plot(ax, df, label_col, value_col, title_str):
         value_col = "count"
     else:
         group_df_agg = df.groupby(label_col, as_index=False, dropna=False)[value_col].sum()
-    
+
     # Filter for top 5 species for clarity
     group_df = group_df_agg.sort_values(by=value_col, ascending=False).head(5)
 
     plot_data = group_df[group_df[value_col] > 0].copy()
-    
-    #word break category labels by replacing the " " character with \n
+
+    # Determine colors before mutating labels for display
+    pie_colors = None
+    if color_map:
+        labels_raw = plot_data[label_col].fillna("missing/not provided").astype(str)
+        pie_colors = [color_map.get(lbl, "#808080") for lbl in labels_raw]
+
+    # word break category labels by replacing the " " character with \n
     plot_data[label_col] = plot_data[label_col].fillna("missing/not provided").astype(str).str.replace(" ", "\n")
-    
+
     if not plot_data.empty:
         ax.pie(
             plot_data[value_col],
             labels=plot_data[label_col],
             autopct="%1.1f%%",
+            colors=pie_colors,
         )
         ax.set_title(title_str)
     else:
@@ -268,7 +274,9 @@ def create_single_pie_plot(ax, df, label_col, value_col, title_str):
         ax.set_title(f"{title_str}\n(No data to plot)")
 
 
-def create_single_scatter_plot(ax, df, x_col, y_col, color_col, title_str, show_legend=True):
+def create_single_scatter_plot(
+    ax, df, x_col, y_col, color_col, title_str, show_legend=True, wrap_legend=False,color_map=None
+):
     """
     Generates a single scatter plot on the provided axes.
 
@@ -280,31 +288,41 @@ def create_single_scatter_plot(ax, df, x_col, y_col, color_col, title_str, show_
         color_col (str): Column name for categorical coloring (optional).
         title_str (str): Title for the plot.
         show_legend (bool): Whether to display the legend.
+        color_map (dict): Optional dictionary mapping categories to colors.
     """
     if color_col and color_col in df.columns:
         # Simple categorical coloring
-            
+
         categories = df[color_col].dropna().unique()
-        # Get default color cycle
-        prop_cycle = plt.rcParams['axes.prop_cycle']
-        colors = prop_cycle.by_key()['color']
-        
+
+        if not color_map:
+            # Get default color cycle if no map provided
+            prop_cycle = plt.rcParams["axes.prop_cycle"]
+            colors = prop_cycle.by_key()["color"]
+
         for i, cat in enumerate(categories):
             subset = df[df[color_col] == cat]
-            color = colors[i % len(colors)]
-            ax.scatter(subset[x_col], subset[y_col], label=str(cat), color=color, alpha=0.7)
-        
+            if color_map:
+                color = color_map.get(str(cat), "#808080")
+            else:
+                color = colors[i % len(colors)]
+            ax.scatter(subset[x_col], subset[y_col], label=str(cat), color=color, alpha=0.8)
+
         # Add legend
         if show_legend:
-            ax.legend(title=color_col, bbox_to_anchor=(1.05, 1), loc='upper left')
+            #wrap long legend items on " " and "_" by replacing with  \n
+            legend_items = [l.replace(" ", "\n").replace("_", "\n") for l in categories] if wrap_legend else categories
+            ax.legend(legend_items, title=color_col, bbox_to_anchor=(1.05, 1), loc='upper left')
+
+            #ax.legend(title=color_col, bbox_to_anchor=(1.05, 1), loc='upper left')
     else:
-        ax.scatter(df[x_col], df[y_col], alpha=0.7)
-    
+        ax.scatter(df[x_col], df[y_col], alpha=0.8)
+
     # Set labels and title
-    #trim long x and y labels > 30 characters
-    #x_col = x_col[:30]
-    #y_col = y_col[:30]
-    
+    # trim long x and y labels > 30 characters
+    # x_col = x_col[:30]
+    # y_col = y_col[:30]
+
     # Format x-axis dates if needed
     if pd.api.types.is_datetime64_any_dtype(df[x_col]):
         ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%Y-%m-%d'))
@@ -315,12 +333,13 @@ def create_single_scatter_plot(ax, df, x_col, y_col, color_col, title_str, show_
     ax.set_title(title_str)
     ax.grid(True, linestyle='--', alpha=0.7)
 
+
 def delete_existing_plots(output_path):
     """
     Deletes existing .png plot files in the output directory to prevent confusion with new plots from the current run.
     """
     if output_path.exists() and output_path.is_dir():
-    # delete all plots in the output folder before creating new ones to avoid confusion and ensure we are only looking at the plots from the current run. We will only delete files that match the .png extension to avoid accidentally deleting other files in the output folder.
+        # delete all plots in the output folder before creating new ones to avoid confusion and ensure we are only looking at the plots from the current run. We will only delete files that match the .png extension to avoid accidentally deleting other files in the output folder.
         for filename in output_path.iterdir():
             if filename.suffix == ".png":
                 try:
@@ -328,6 +347,17 @@ def delete_existing_plots(output_path):
                 except Exception as e:
                     print(f"Error deleting file {filename}: {e}")
                     continue
+
+
+def get_global_color_map(df, column_name):
+    if not column_name or column_name not in df.columns:
+        return None
+    unique_vals = sorted(df[column_name].dropna().unique().astype(str))
+    # Use tab20 for better distinction than default tab10
+    cmap = plt.get_cmap("tab20")
+    colors = [cmap(i % 20) for i in range(len(unique_vals))]
+    return dict(zip(unique_vals, colors))
+
 
 def create_plots(joined_dfs, data_summaries, PLOTS_DEFINITION, output_path) -> list[str]:
     """
@@ -343,29 +373,27 @@ def create_plots(joined_dfs, data_summaries, PLOTS_DEFINITION, output_path) -> l
     """
     print("Creating plots...")
 
-        
-    
     plot_collection = {}
     for plot_series_name, config in PLOTS_DEFINITION.items():
         plot_series = []
-        
+
         # Determine plot type
         plot_type = config.get("type")
         if not plot_type:
-             # Fallback for legacy keys if 'type' is missing
-             if "pie-chart" in config: 
-                 config = config["pie-chart"]
-                 plot_type = "pie"
-             elif "scatter-chart" in config:
-                 config = config["scatter-chart"]
-                 plot_type = "scatter"
-             else:
-                 print(f"Warning: Unknown plot type for '{plot_series_name}'. Skipping.")
-                 continue
+            # Fallback for legacy keys if 'type' is missing
+            if "pie-chart" in config: 
+                config = config["pie-chart"]
+                plot_type = "pie"
+            elif "scatter-chart" in config:
+                config = config["scatter-chart"]
+                plot_type = "scatter"
+            else:
+                print(f"Warning: Unknown plot type for '{plot_series_name}'. Skipping.")
+                continue
 
         table_name = config.get("table")
         group_by_cols = config.get("group_by")
-        
+
         df = None
         if table_name in joined_dfs:
             df = joined_dfs[table_name]
@@ -377,6 +405,13 @@ def create_plots(joined_dfs, data_summaries, PLOTS_DEFINITION, output_path) -> l
 
         if "filter" in config:
             df = filter_df(config["filter"], df, task_type="plot", task_name=plot_series_name)
+
+        # Generate global color map for consistency across groups
+        color_map = None
+        if plot_type == "pie":
+            color_map = get_global_color_map(df, config.get("category"))
+        elif plot_type == "scatter":
+            color_map = get_global_color_map(df, config.get("color"))
 
         # Grouping
         if group_by_cols:
@@ -390,12 +425,12 @@ def create_plots(joined_dfs, data_summaries, PLOTS_DEFINITION, output_path) -> l
             continue
 
         for group_key, group_df in groups:
-            fig_size=(4, 3) if len(groups) > 4 else (8,6)
+            fig_size=(4, 3) if len(groups) > 4 else (6,4)
             fig, ax = plt.subplots(figsize=fig_size)
 
             # Title logic
             group_key_tuple = group_key if isinstance(group_key, tuple) else (group_key,)
-            
+
             # Check if all group_by columns are numeric to decide on title format
             all_numeric_groups = all(is_numeric_dtype(df[col]) for col in group_by_cols) if group_by_cols else False
 
@@ -408,68 +443,77 @@ def create_plots(joined_dfs, data_summaries, PLOTS_DEFINITION, output_path) -> l
                     for d in group_key_tuple
                 )
                 title_str = " | ".join(map(str, group_key_tuple))
-            
+
             # Dispatch
             if plot_type == "pie":
                 create_single_pie_plot(
-                    ax, 
-                    group_df, 
-                    label_col=config.get("category"), 
-                    value_col=config.get("value"), 
-                    title_str=title_str
+                    ax,
+                    group_df,
+                    label_col=config.get("category"),
+                    value_col=config.get("value"),
+                    title_str=title_str,
+                    color_map=color_map,
                 )
             elif plot_type == "scatter":
                 x_col = config.get("x")
                 y_col = config.get("y")
                 color_col = config.get("color")
-                
+
                 # Filter: Remove rows where both x and y are NaN
                 plot_df = group_df.dropna(subset=[x_col, y_col], how='all').copy()
-                
+
                 if plot_df.empty:
                     plt.close(fig)
                     continue
 
-                # Replace NaN with 0 in x and y columns
-                if is_numeric_dtype(plot_df[x_col]):
-                    plot_df[x_col] = plot_df[x_col].fillna(0)
-                if is_numeric_dtype(plot_df[y_col]):
-                    plot_df[y_col] = plot_df[y_col].fillna(0)
+                is_x_numeric = is_numeric_dtype(plot_df[x_col])
+                is_y_numeric = is_numeric_dtype(plot_df[y_col])
+                is_x_datetime = is_datetime64_any_dtype(plot_df[x_col])
+                is_y_datetime = is_datetime64_any_dtype(plot_df[y_col])
+   
 
                 # Aggregation logic: Aggregate if specified in config
                 agg_func = config.get("aggregate_function")
                 if agg_func:
-                    is_x_numeric = is_numeric_dtype(plot_df[x_col])
-                    is_y_numeric = is_numeric_dtype(plot_df[y_col])
-
                     if is_x_numeric and not is_y_numeric:
                         agg_cols = [y_col]
                         if color_col and color_col in plot_df.columns and color_col != y_col:
                             agg_cols.append(color_col)
                         plot_df = plot_df.groupby(agg_cols, as_index=False)[x_col].agg(agg_func)
-                        #trim long species/site names
-                        if plot_df[y_col].dtype == "str":
-                            plot_df[y_col] = plot_df[y_col].str[:25]
-                            plot_df = plot_df.sort_values(by=x_col, ascending=True).tail(15)
+
                     elif is_y_numeric and not is_x_numeric:
                         agg_cols = [x_col]
                         if color_col and color_col in plot_df.columns and color_col != x_col:
                             agg_cols.append(color_col)
                         plot_df = plot_df.groupby(agg_cols, as_index=False)[y_col].agg(agg_func)
-                        #trim long species/site names
-                        if plot_df[x_col].dtype == "str":
-                            plot_df[x_col] = plot_df[x_col].str[:25]
-                            plot_df = plot_df.sort_values(by=y_col, ascending=True).tail(15)
-                        
-                        
+
+                # Trim long species/site names and Sort
+                if not is_x_numeric and not is_x_datetime:
+                    plot_df[x_col] = plot_df[x_col].astype(str).str[:25]
+                    if is_y_numeric:
+                        plot_df = plot_df.sort_values(by=y_col, ascending=True).tail(15)
+                    else:
+                        plot_df = plot_df.sort_values(by=x_col, ascending=True)
+
+                if not is_y_numeric and not is_y_datetime:
+                    plot_df[y_col] = plot_df[y_col].astype(str).str[:25]
+                    if is_x_numeric:
+                        plot_df = plot_df.sort_values(by=x_col, ascending=True).tail(15)
+                    elif is_x_datetime:
+                        plot_df = plot_df.sort_values(by=y_col, ascending=True)
+                    else:
+                        plot_df = plot_df.sort_values(by=y_col, ascending=True)
+
                 create_single_scatter_plot(
-                    ax, 
-                    plot_df, 
-                    x_col=x_col, 
-                    y_col=y_col, 
-                    color_col=color_col, 
+                    ax,
+                    plot_df,
+                    x_col=x_col,
+                    y_col=y_col,
+                    color_col=color_col,
                     title_str=title_str,
-                    show_legend=config.get("Legend", True)
+                    show_legend=config.get("Legend", True),
+                    wrap_legend = len(groups) > 4,
+                    color_map=color_map,
                 )
 
             plt.tight_layout()
@@ -485,7 +529,7 @@ def create_plots(joined_dfs, data_summaries, PLOTS_DEFINITION, output_path) -> l
             plt.close(fig)
             print(f"Plot saved to {output_plot_path}")
             plot_series.append(output_filename)
-            
+
         plot_collection[plot_series_name] = plot_series
     return plot_collection
 
@@ -600,26 +644,42 @@ def generate_effort_summaries(joined_dfs, summaries_config):
 
         # Initialize QA Check column
         col_map = {}
-        for col, funcs in summary_funcs.items():
+        # This loop is to build the map from the generated column name back to the original function.
+        for original_col, funcs in summary_funcs.items():
             if isinstance(funcs, str):
                 funcs = [funcs]
 
-            # Map functions to column names in the flattened dataframe
             for func in funcs:
-                target_func = "records" if func == "count" else func
-                target_col = f"{col}\n{target_func}"
-                if target_col in summary_df.columns:
-                    col_map[func] = target_col
-                elif col in summary_df.columns:
-                    col_map[func] = col
+                if func == 'first':
+                    # 'first' does not rename the column
+                    if original_col in summary_df.columns:
+                        col_map[original_col] = func
+                else:
+                    target_func_display = "records" if func == "count" else func
+                    generated_col_name = f"{original_col}\n{target_func_display}"
+                    if generated_col_name in summary_df.columns:
+                        col_map[generated_col_name] = func
 
-            # Apply QA Checks
-            # if sum, max, min in summary functions for a column that includes "cover" in the name, we want to check that the values are within a valid range (e.g. 0-100% for percent cover data) and flag any values that are outside of this range as potential data quality issues. This is because if we have many unique SamplingUnitIDs that are being summed together, we want to check the range of values for the new column to identify any potential data quality issues (e.g. if the sum is much higher than expected, it may indicate that there are many small quadrats with non-zero values that are being summed together, which could be a data quality issue or it could be a valid property of the data). By checking the range of values for the new column, we can identify any potential outliers or data quality issues.
-        for func, col in col_map.items():
+        # make a list of all columns that have a function of "count"
+        count_cols = [col for col, func in col_map.items() if func == "count"]
+        first_count_col = count_cols[0] if count_cols else None
+        try:
+            count_cols.remove(first_count_col)
+        except (ValueError,TypeError):
+            pass
+
+        
+            
+
+
+
+
+        # Apply QA Checks
+        for col, func in col_map.items():
             # Extract original col name from column name
             col_name = col.split("\n")[0]
            
-            #check_stats = any(f for f in ["sum", "max", "min"] if f in summary_funcs.items())
+            #cover percentages
             if func in ["sum", "max", "min"] and "cover\n" in col.lower():
 
                 #explicit check mark for valid range
@@ -634,48 +694,63 @@ def generate_effort_summaries(joined_dfs, summaries_config):
                 if func == "max":
                     summary_df.loc[summary_df[col] == 0, qa_check_col] = f"{col_name}_{func} is 0"
                     
-                    
-            if func == "max" and "Date" in col and "min" in col_map and col_map["min"] == f"{col_name}\nmin":
+            #Date Range > 7 days
+            min_col_name = f"{col_name}\nmin"
+            if func == "max" and "Date" in col and min_col_name in summary_df.columns:
                 if pd.api.types.is_datetime64_any_dtype(summary_df[col]):
                     qa_check_col = "QA Check\ndate range\n> 7d"
                     # Initialize the column to prevent ValueError if the first assignment is to an empty slice
                     summary_df[qa_check_col] = ""
-                    duration = summary_df[col] - summary_df[col_map["min"]]
+                    duration = summary_df[col] - summary_df[min_col_name]
                     mask = duration > pd.Timedelta(days=7)
                     summary_df.loc[mask, qa_check_col] = "long survey (" + duration[mask].dt.days.astype(str) + " days)"
                     #explicit check mark for valid range
                     summary_df.loc[duration <= pd.Timedelta(days=7), qa_check_col] = "\u2713"
                  
-            if func == "count" and "nunique" in col_map:
+            nunique_col_name = f"{col_name}\nnunique"
+            if func == "count" and nunique_col_name in summary_df.columns:
                 if pd.api.types.is_numeric_dtype(summary_df[col]):
-                    qa_check_col = "QA Check\nequality\nnunique = records"
+                    qa_check_col = f"QA Check\n{nunique_col_name} = {col}"
                     # Initialize the column to prevent ValueError if the first assignment is to an empty slice
                     summary_df[qa_check_col] = ""
-                    summary_df.loc[summary_df[col] != summary_df[col_map["nunique"]], qa_check_col] = "mismatched"
+                    summary_df.loc[summary_df[col] != summary_df[nunique_col_name], qa_check_col] = "mismatched"
                     #explicit check mark for valid range
-                    summary_df.loc[summary_df[col] == summary_df[col_map["nunique"]], qa_check_col] = "\u2713"
-                
+                    summary_df.loc[summary_df[col].notna() & (summary_df[col] == summary_df[nunique_col_name]), qa_check_col] = "\u2713"
+                    
+            if func == "count" and col in count_cols:
+                qa_check_col = f"QA Check\n{col} = {first_count_col}"
+                summary_df[qa_check_col] = ""
+                summary_df.loc[summary_df[col] != summary_df[first_count_col], qa_check_col] = "mismatched"
+                summary_df.loc[summary_df[col].notna() & (summary_df[col] == summary_df[first_count_col]), qa_check_col] = "\u2713"
+
             
             #find any columns in summary_funcs.items() that are also in group_by_cols and check that the count of those columns is equal to the count of QuadratPlotID for the same group_by. This is to check for any potential data quality issues where there may be multiple records for some sampling units that have soil moisture data, which could indicate a data quality issue or it could be a valid property of the data. By checking for values greater than the count of QuadratPlotID, we can identify any potential outliers or data quality issues.
             
-            plot_id_count_col = "QuadratPlotID\ncount"
-            if func == "count" and "SoilMoisture" in col and plot_id_count_col in col_map.items():
+            #soilmoisture missing from quadrat
+            plot_id_count_col = "QuadratPlotID\nrecords"
+            if func == "count" and "SoilMoisture" in col and plot_id_count_col in summary_df.columns:
                 #should be equal to the count of QuadratPlotID for the same group_by (which should be the number of records that have soil moisture data), if there are more records than that, it may indicate that there are multiple soil moisture records for some sampling units, which could be a data quality issue or it could be a valid property of the data. By checking for values greater than the count of QuadratPlotID, we can identify any potential outliers or data quality issues.
                 qa_check_col = "QA Check\nSoilMoisture count\nvs QuadratPlotID count"
                 summary_df[qa_check_col] = ""
                 summary_df.loc[summary_df[col] != summary_df[plot_id_count_col], qa_check_col] = f"{col_name} missing for QuadratPlotID"
                 #explicit check mark for valid range
-                summary_df.loc[summary_df[col] == summary_df[plot_id_count_col], qa_check_col] = "\u2713"
+                summary_df.loc[summary_df[col].notna() & (summary_df[col] == summary_df[plot_id_count_col]), qa_check_col] = "\u2713"
                 
             # check if needed if "Count" in col and "Count" in summary_funcs and "sum" in summary_funcs["Count"]:
             #     qa_outliers("sum", col, summary_df, col_map)
-            if func =="nunique" and "ScientificName"in col:
-                qa_outliers("nunique", col, summary_df, col_map)
+            if func == "nunique" and "ScientificName" in col:
+                qa_outliers(func, col, summary_df)
+            
+            #if "count" appears in col_map.items() more than once assume all counts should be the same.  To add QA check, skip over the 1st count column, then for the 2nd, 3rd and subsequent count columns we compare the count to the 1st column and flag any missmatch
+            
+            
                 
-            if func == "count" in func:
-                qa_outliers("count", col, summary_df, col_map)
-            if func == "sum" in func:
-                qa_outliers("sum", col, summary_df, col_map)
+            if func == "count":
+                qa_outliers(func, col, summary_df)
+            if func == "sum":
+                qa_outliers(func, col, summary_df)
+            if func == "mean":
+                qa_outliers(func, col, summary_df)
             if "Date\n" in col:
                 if func == "count":
                     # col = col_map["count"]
@@ -692,16 +767,16 @@ def generate_effort_summaries(joined_dfs, summaries_config):
                     #     )
                     #     #explicit check mark for valid range
                     #     summary_df.loc[summary_df[func_map] == mode_val, qa_check_col] = "\u2713"
-                    qa_outliers("count", col, summary_df, col_map)
+                    qa_outliers(func, col, summary_df)
 
-                if "nunique" in col_map:
-                    qa_outliers("nunique", col, summary_df, col_map)
+                if f"{col_name}\nnunique" in summary_df.columns:
+                    qa_outliers(func, col, summary_df)
 
         summary_tables[summary_name] = (table_name, summary_df)
 
     return summary_tables
 
-def qa_outliers(func, col, summary_df, col_map):
+def qa_outliers(func, col, summary_df):
     """
     Performs outlier detection using the Interquartile Range (IQR) method and flags outliers in the summary DataFrame.
 
@@ -711,28 +786,34 @@ def qa_outliers(func, col, summary_df, col_map):
         summary_df (pd.DataFrame): The summary DataFrame to modify.
         col_map (dict): Mapping from function names to the actual column names in summary_df.
     """
-    func_map = col_map[func]  # Get the column name corresponding to the function (e.g. "Count\nsum" or "ScientificName\nnunique")
     
-    q1 = summary_df[func_map].quantile(0.25)
-    q3 = summary_df[func_map].quantile(0.75)
+    q1 = summary_df[col].quantile(0.25)
+    q3 = summary_df[col].quantile(0.75)
     iqr = q3 - q1
 
     if pd.notna(iqr):
         lower_bound = q1 - 1.5 * iqr
         upper_bound = q3 + 1.5 * iqr
-        func = "records" if func == "count" else func   
+ 
         qa_check_col = f"QA Check\n{col}\noutliers IQR\n[{lower_bound:.1f}, {upper_bound:.1f}]"
   
 
         summary_df[qa_check_col] = ""
-        summary_df.loc[summary_df[func_map] > upper_bound, qa_check_col] = (
-                            f"high {col}_{func}"
+        summary_df.loc[summary_df[col] > upper_bound, qa_check_col] = (
+                            f"high {col}"
                         )
-        summary_df.loc[summary_df[func_map] < lower_bound, qa_check_col] = (
-                            f"low {col}_{func}"
+        summary_df.loc[summary_df[col] < lower_bound, qa_check_col] = (
+                            f"low {col}"
                         )
-                        #explicit check mark for valid range
-        summary_df.loc[(summary_df[func_map] >= lower_bound) & (summary_df[func_map] <= upper_bound), qa_check_col] = "\u2713"
+        if func == "count":
+            summary_df.loc[summary_df[col].isna() | (summary_df[col] == 0), qa_check_col] = "no data"
+            #explicit check mark for valid range only
+            summary_df.loc[summary_df[col].notna() & (summary_df[col] > 0) & (summary_df[col] >= lower_bound) & (summary_df[col] <= upper_bound), qa_check_col] = "\u2713"
+        else:
+            summary_df.loc[summary_df[col].isna(), qa_check_col] = "no data"
+            #explicit check mark for valid range only
+            summary_df.loc[summary_df[col].notna() & (summary_df[col] >= lower_bound) & (summary_df[col] <= upper_bound), qa_check_col] = "\u2713"
+        
 
 
 def main():
