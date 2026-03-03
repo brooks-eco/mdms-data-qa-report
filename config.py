@@ -6,28 +6,29 @@ from pathlib import Path
 
 @dataclass
 class BaseQAReportConfig:
-    #-----------------------------------------------------------------
+    # -----------------------------------------------------------------
     # None to produce reports for every GroupName in a global workbook
     # or can limit to just one group e.g. "LAC", MBG"
-    
-    testing_group_name: str = None#"MBG"#None#"MAC" #None  #"MAC"#None #"LAC"
-    
-    
-    #-----------------------------------------------------------------
+
+    testing_group_name: str = ("MBG","LAC") #None for all
+
+    # -----------------------------------------------------------------
     # workbooks are downloaded from MDMS manually and placed in the workbooks folder
-    #-----------------------------------------------------------------
+    # -----------------------------------------------------------------
+
+    # input_file:str = "waterbirdsurvey_20260220153534.xlsx"
+    input_file:str = "Fish_20260223111704.xlsx"
+    # input_file ="FishLarvae_20260223230007.xlsx"
+    # input_file ="waterbirdsurvey_20260224100311.xlsx"
+    #input_file = "Vegetation_20260219153548.xlsx"
+    #input_file:str = "Vegetation_20260303135639.xlsx"
     
-    #input_file:str = "waterbirdsurvey_20260220153534.xlsx"
-    #input_file:str = "Fish_20260223111704.xlsx"
-    #input_file ="FishLarvae_20260223230007.xlsx"
-    input_file ="waterbirdsurvey_20260224100311.xlsx"
     
     
+
     start_date: pd.Timestamp = pd.to_datetime("2024-06-01")
     end_date: pd.Timestamp = pd.to_datetime("2025-07-31")
-    
-    
-    
+
     filter_by_date: bool = True
     create_markdown_report: bool = False
     workbooks_path: Path = Path("workbooks")

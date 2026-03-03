@@ -10,7 +10,6 @@ class FishQAReportConfig(BaseQAReportConfig):
     """
 
     # --- Configuration ---
-    group_name_source_sheet: str = "FishSurveyEffort"  # The sheet name to look for GroupName values. Adjust if your grouping variable is in a different sheet.
     report_title: str = "Fish QA Report"
     data_url = "https://mdms.essolutions.com.au/workbooks/download/4"
 
@@ -20,20 +19,15 @@ class FishQAReportConfig(BaseQAReportConfig):
     # FishAge: SamplePointName	SampleDate	SampleType	SampleNumber	IndividualID	ScientificName	TotalLength	ForkLength	Weight	AgeAdult	AgeLarvae	Comment
     # FishLengthWeight: SamplePointName	SampleDate	SampleType	SampleNumber	ScientificName	FishNumber	IndividualID	TotalLength	ForkLength	Weight	Comment
 
-    # worksheet names and their expected columns based on the provided Excel file structure.
-    # adjust to the commented columns above.
-    workbook: List[str] = field(
-        default_factory=lambda: [
-            "FishSurveyEffort",
-            "FishAdultCatch",
-            "FishAge",
-            "FishLengthWeight",
-        ]
-    )
-
     # Join definitions - this will be a dictionary where keys are the target table names and values are dictionaries that specify the join( right) table, the columns to join on, and the type of join. This will allow us to easily add more joins in the future without changing the code structure.
 
     joins_required: Dict[str, Dict[str, Any]] = field(default_factory=lambda: {
+        
+        "FishSurveyEffort": {
+            "right": "SamplePoints",
+            "on": ["SamplePointName"],
+            "how": "left",
+        }, 
         "FishAdultCatch": {
             "right": "FishSurveyEffort",
             "on": ["SamplePointName", "SampleDate", "SampleType", "SampleNumber"],
@@ -72,7 +66,7 @@ class FishQAReportConfig(BaseQAReportConfig):
                 "group_by": ["SamplePointName", "SampleDate", "SampleType"],
                 "summary": {"Count": "sum", "ScientificName": "nunique"},
             },
-            "LW: Count of measured fish per sample event": {
+            "LengthWeight (field-measures): Count of records for measured fish per sample event ": {
                 "table": "FishLengthWeight",
                 "group_by": ["SamplePointName", "SampleType", "SampleDate", ],
                 "summary": {
@@ -81,32 +75,54 @@ class FishQAReportConfig(BaseQAReportConfig):
                     "Weight": "count",
                 },
             },
-            "LW: Total Length summary per species": {
+            "LengthWeight (field-measures): Total Length summary per species": {
                 "table": "FishLengthWeight",
                 "group_by": ["ScientificName"],
                 "summary": {
                     "TotalLength": ["count", "min", "mean", "max"],
                 },
             },
-            "LW: Fork Length summary per species": {
+            "LengthWeight (field-measures): Fork Length summary per species": {
                 "table": "FishLengthWeight",
                 "group_by": ["ScientificName"],
                 "summary": {
                     "ForkLength": ["count", "min", "mean", "max"],
                 },
             },
-            "LW: Weight summary per species": {
+            "LengthWeight (Field-measures): Weights summary per species": {
                 "table": "FishLengthWeight",
                 "group_by": ["ScientificName"],
                 "summary": {
                     "Weight": ["count", "min", "mean", "max"],
                 },
             },
-            "Age: Age data summary per species": {
+            "Age (lab-measures): Cross-check FishNumber records vs IndividualID records per species ": {
+                "table": "FishAge",
+                "group_by": ["ScientificName"],
+                "summary": {
+                    "SampleNumber": "nunique",
+                    "SampleNumber": "count",
+                    "IndividualID": "nunique",
+                    "IndividualID": "count",
+
+                },
+            },
+            "Age (lab-measures): Age data summary per species": {
                 "table": "FishAge",
                 "group_by": ["ScientificName"],
                 "summary": {
                     "AgeAdult": ["min", "mean", "max", "count"],
+                    "AgeLarvae": ["count"],
+                },
+            },
+            "Age (lab-measures): length and weights from aged fish": {
+                "table": "FishAge",
+                "group_by": ["ScientificName"],
+                "summary": {
+                    "IndividualID": "nunique",
+                    "TotalLength": "count",
+                    "ForkLength": "count",
+                    "Weight": "count",
                 },
             },
         }
@@ -115,6 +131,21 @@ class FishQAReportConfig(BaseQAReportConfig):
     # plot of multiple pie charts showing species composition (percent cover) by plot and sampling time. This will help identify if there are any plots or sampling times that have unusual species composition that may indicate data quality issues.
     plot_definitions: Dict[str, Dict[str, Any]] = field(
         default_factory=lambda: {
+            "Species Catch Composition - Individual Replicate Samples": {
+                "note": "Guidance: The dots are individual replicate counts for any dates.  This will expose outliers in individual replicates that may not be obvious once replicates are combined. (Limited to most abundant 15 species per plot)",
+                "type": "scatter",
+                "table": "FishAdultCatch",
+                "group_by": ["SamplePointName", "SampleType"],
+                "x": "Count",
+                "y": "ScientificName",
+                "color": "ScientificName",
+                "Legend": False,
+            },
+            
+            
+            
+            
+            
             "Species Catch Composition - Individual Replicate Samples": {
                 "note": "Guidance: The dots are individual replicate counts for any dates.  This will expose outliers in individual replicates that may not be obvious once replicates are combined. (Limited to most abundant 15 species per plot)",
                 "type": "scatter",

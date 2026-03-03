@@ -10,22 +10,12 @@ class FishLarvaeQAReportConfig(BaseQAReportConfig):
     """
 
     # --- Configuration ---
-    group_name_source_sheet: str = "LarvaeSurveyEffort"  # The sheet name to look for GroupName values. Adjust if your grouping variable is in a different sheet.
     report_title: str = "Fish Larvae QA Report"
     data_url = "https://mdms.essolutions.com.au/workbooks/download/14"
 
     # Prepare data table  - need a generic python way to define these joins (e.g. dictionary) and a function to do the joins based on the dictionary. This will allow us to easily add more tables and joins in the future without changing the code structure.
     # LarvaeSurveyEffort: GroupName	SamplePointName	SampleDate	SampleType	SampleNo	StartDateTime	EndDateTime	TotalTripSamples	Pooled	SampleDurationSec	VolumeFiltered	QualityVolumeFiltered	Turbidity	QualityTurbidity	CompDataID	Comment
     # FishLarvaeCounts: SamplePointName	SampleDate	SampleType	SampleNo	ScientificName	Count	Comment
-
-    # worksheet names and their expected columns based on the provided Excel file structure.
-    # adjust to the commented columns above.
-    workbook: List[str] = field(
-        default_factory=lambda: [
-            "LarvaeSurveyEffort",
-            "FishLarvaeCounts",
-        ]
-    )
 
     # Join definitions - this will be a dictionary where keys are the target table names and values are dictionaries that specify the join( right) table, the columns to join on, and the type of join. This will allow us to easily add more joins in the future without changing the code structure.
 

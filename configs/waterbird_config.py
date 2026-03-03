@@ -5,7 +5,6 @@ from config import BaseQAReportConfig
 
 @dataclass
 class WaterbirdQAReportConfig(BaseQAReportConfig):
-    group_name_source_sheet: str = "WaterbirdSurveys"  # The sheet name to look for GroupName values. Adjust if your grouping variable is in a different sheet.
     report_title: str = "Waterbird QA Report"
     left_justify_columns: Set[str] = field(
         default_factory=lambda: {"BreedingNotes", "SamplePointName\nunique"}
@@ -14,13 +13,6 @@ class WaterbirdQAReportConfig(BaseQAReportConfig):
 
     # WaterbirdSurveys: SamplePointName	VisitDate	SurveyNumber	StartTime	EndTime	Observers	SurveyMethod	eWaterTiming	InundatedArea	AirTemp	Rain	CloudCoverPercent	WindSpeed	WindDirection	SurveyCoverage	Disturbance	CompDataID	Comment
     # WaterbirdCounts: SamplePointName	VisitDate	SurveyNumber	ScientificName	ObsType	TotalCount	BroodsNests	BreedingNotes	CountAccuracy	Comment
-
-    workbook: List[str] = field(
-        default_factory=lambda: [
-            "WaterbirdSurveys",
-            "WaterbirdCounts",
-        ]
-    )
 
     joins_required: Dict[str, Dict[str, Any]] = field(default_factory=lambda: {
         "WaterbirdCounts": {

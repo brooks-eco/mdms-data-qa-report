@@ -124,7 +124,7 @@ class PDFQAReport:
         self._add_summary_tables(data_summaries, data_summary_definitions, left_justify_columns)
 
         # Plots
-        self.elements.append(CondPageBreak(10*cm))
+        self.elements.append(CondPageBreak(12*cm))
         self.elements.append(Spacer(1, 9))
         self.elements.append(Paragraph(f"Review Graphical Summaries", self.h1))
         self._add_plots(plot_collection, plot_definitions)

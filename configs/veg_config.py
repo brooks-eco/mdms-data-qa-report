@@ -10,7 +10,6 @@ class VegQAReportConfig(BaseQAReportConfig):
     """
 
     # --- Configuration ---
-    group_name_source_sheet: str = "VegTripGrouping"  # The sheet name to look for GroupName values. Adjust if your grouping variable is in a different sheet.
     report_title: str = "Vegetation QA Report"
     data_url = "https://mdms.essolutions.com.au/workbooks/download/5"
 
@@ -19,18 +18,6 @@ class VegQAReportConfig(BaseQAReportConfig):
     # VegSpeciesAbundance: SamplingUnitID	SampleDate	Stratum	ScientificName	PercentCover	Comment
     # VegRecruitment: SamplingUnitID	SampleDate	ScientificName	Stage0Recruit	Stage1Recruit	Stage2Recruit	Stage3Recruit	Stage4Recruit	Comment
     # VegSamplingUnits: SamplingUnitID	SamplePointName	TransectID	QuadratPlotID	SamplingUnitType	Elevation	ANAEType	LatitudeCentroid	LongitudeCentroid	Active	Comment
-
-    # worksheet names and their expected columns based on the provided Excel file structure.
-    # adjust to the commented columns above.
-    workbook: List[str] = field(
-        default_factory=lambda: [
-            "VegTripGrouping",
-            "VegCommunitySurvey",
-            "VegSpeciesAbundance",
-            "VegRecruitment",
-            "VegSamplingUnits",
-        ]
-    )
 
     # Join definitions - this will be a dictionary where keys are the target table names and values are dictionaries that specify the join( right) table, the columns to join on, and the type of join. This will allow us to easily add more joins in the future without changing the code structure.
 

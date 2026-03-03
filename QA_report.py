@@ -29,14 +29,12 @@ def make_safe(filename):
     return filename.replace(" ", "_").replace("'", "").replace(":", "").replace("/", "-")
 
 
-def load_data(filepath, group_name_source, workbook_def, testing_group, filter_date, start, end):
+def load_data(filepath, testing_group, filter_date, start, end):
     """
     Loads data from an Excel workbook, filtering by group and date if specified.
 
     Args:
         filepath (Path): Path to the Excel file.
-        group_name_source (str): Sheet name to check for 'GroupName' to determine relevant groups.
-        workbook_def (list): A list of sheet names to load from the workbook.
         testing_group (str): Specific group name to filter for (optional).
         filter_date (bool): Whether to filter data by date.
         start (datetime): Start date for filtering.
@@ -55,55 +53,55 @@ def load_data(filepath, group_name_source, workbook_def, testing_group, filter_d
         print(f"Error loading Excel file: {e}")
         return {}
     workbook_data = {}
-    if testing_group is not None:
-        relevant_group_names = [testing_group]
-    else:
-        relevant_group_names = ["QA"]  # Default for area-scale books or if groups can't be found.
-
-        # For multi-group workbooks, try to extract unique "GroupName" values from "FishSurveyEffort".
-        if group_name_source in xls.sheet_names:
-            trip_grouping_df = pd.read_excel(xls, sheet_name=group_name_source)
-            if "GroupName" in trip_grouping_df.columns:
-                groups = trip_grouping_df["GroupName"].dropna().unique()
-                if groups.size > 0:
-                    relevant_group_names = groups
-
-    print(f"Processing report for Group(s): {', '.join(map(str, relevant_group_names))}")
+    if not isinstance(testing_group, set):
+        testing_group = set(testing_group)
     
     dfs = {}
-    for sheet_name in workbook_def:
-        if sheet_name in xls.sheet_names:
-            print(f"Reading sheet: {sheet_name}")
-            df = pd.read_excel(xls, sheet_name=sheet_name)
-            # Clean column names (strip whitespace) to prevent mismatch errors
-            #df.columns = df.columns.astype(str).str.strip()
-            # filter data to the specified date range if the date column exists
-            date_col = (
-                "SampleDate"
-                if "SampleDate" in df.columns
-                else "date" if "date" in df.columns else None
-            )
-            if filter_date and date_col:
-                df[date_col] = pd.to_datetime(df[date_col])
-                df = df[(df[date_col] >= start) & (df[date_col] <= end)]
-                df["Year"] = df[date_col].dt.year
-                df["Month"] = df[date_col].dt.month
-
+    groups = set()
+    for sheet_name in xls.sheet_names:
+        if sheet_name.lower() =='metadata':
+            #skip the metadata page
+            continue
+        print(f"Reading sheet: {sheet_name}")
+        df = pd.read_excel(xls, sheet_name=sheet_name)
+        # Clean column names (strip whitespace) to prevent mismatch errors
+        #df.columns = df.columns.astype(str).str.strip()
+        # filter data to the specified date range if the date column exists
+        date_col = (
+            "SampleDate"
+            if "SampleDate" in df.columns
+            else "date" if "date" in df.columns else None
+        )
+        if filter_date and date_col:
+            df[date_col] = pd.to_datetime(df[date_col])
+            df = df[(df[date_col] >= start) & (df[date_col] <= end)]
+            df["Year"] = df[date_col].dt.year
+            df["Month"] = df[date_col].dt.month
             
-            dfs[sheet_name] = df
-            
-            
-        else:
-            print(f"Warning: Sheet '{sheet_name}' not found in the Excel file.")
+        if "GroupName" in df.columns:
+            groups.update(df["GroupName"].dropna().unique())
+        dfs[sheet_name] = df
     
-    #filter to the groupname if GroupName column exists. "QA" is the default group name assigned for area-scale project books where GroupName is not a column.
-    for group_name in relevant_group_names:
-        print(f"Filtering to group: {group_name}")
-        grp_dfs = dfs.copy()
-        for sheet in grp_dfs:
-            if "GroupName" in grp_dfs[sheet].columns:
-                grp_dfs[sheet] = grp_dfs[sheet][grp_dfs[sheet]["GroupName"] == group_name]
-        workbook_data[group_name] = grp_dfs
+    if testing_group is not None:
+        group_not_found = set(testing_group).difference(groups)
+        groups = groups.intersection(testing_group)
+        if group_not_found:
+            print(f"No data for specified test group(s) {group_not_found} found in workbook: required {testing_group} found {groups}")
+            return None
+
+    if len(groups) == 0:
+        print("No groups found in workbook")
+        #"QA" is the default group name assigned for area-scale project books where GroupName is not a column.
+        workbook_data["QA"] = dfs
+    else:
+        #filter to the groupname if GroupName column exists. 
+        grp_dfs = {}
+        for group_name in groups:
+            print(f"Filtering to group: {group_name}")
+            for sheet in dfs:
+                if "GroupName" in dfs[sheet].columns:
+                    grp_dfs[sheet] = dfs[sheet][dfs[sheet]["GroupName"] == group_name]
+            workbook_data[group_name] = grp_dfs
 
     return workbook_data
 
@@ -128,9 +126,9 @@ def join_tables_generic(dfs, joins_required):
 
         if left_df_name not in dfs or right_df_name not in dfs:
             print(
-                f"Error: DataFrame for '{left_df_name}' or '{right_df_name}' not found."
+                f"Error: Aborting processing because data frame for sheet names '{left_df_name}' or '{right_df_name}' not found."
             )
-            continue
+            return None
 
         if (
             left_df_name in joined_dfs
@@ -462,7 +460,9 @@ def create_plots(joined_dfs, data_summaries, PLOTS_DEFINITION, output_path) -> l
                 # Filter: Remove rows where both x and y are NaN
                 plot_df = group_df.dropna(subset=[x_col, y_col], how='all').copy()
 
-                if plot_df.empty:
+                #skip if one axis all NaN
+                if len(plot_df) == 0 or plot_df[x_col].isna().all() or plot_df[y_col].isna().all():
+                    print(f"    No data to plot for '{title_str}'.")
                     plt.close(fig)
                     continue
 
@@ -842,8 +842,6 @@ def main():
 
     workbook_data = load_data(
         config.workbooks_path / config.input_file,
-        config.group_name_source_sheet,
-        config.workbook,
         config.testing_group_name,
         config.filter_by_date,
         config.start_date,
@@ -858,6 +856,9 @@ def main():
         dfs = workbook_data[group_name]
         # Join tables based on the defined joins_required
         joined_dfs = join_tables_generic(dfs, config.joins_required)
+        if not joined_dfs:
+            print("No data tables joined. Please check sheet names defined in config match the workbook.")
+        
 
         # Generate data summaries based on the defined DATA_SUMMARIES
         data_summaries = generate_effort_summaries(joined_dfs, config.data_summary_definitions)
