@@ -53,8 +53,9 @@ def load_data(filepath, testing_group, filter_date, start, end):
         print(f"Error loading Excel file: {e}")
         return {}
     workbook_data = {}
-    if not isinstance(testing_group, set):
-        testing_group = set(testing_group)
+    if isinstance(testing_group, str):
+        testing_group = [testing_group]
+
     
     dfs = {}
     groups = set()
@@ -95,11 +96,12 @@ def load_data(filepath, testing_group, filter_date, start, end):
         workbook_data["QA"] = dfs
     else:
         #filter to the groupname if GroupName column exists. 
-        grp_dfs = {}
         for group_name in groups:
+            grp_dfs = {}
             print(f"Filtering to group: {group_name}")
-            for sheet in dfs:
-                if "GroupName" in dfs[sheet].columns:
+            for sheet in dfs.keys():
+                grp_dfs[sheet] = dfs[sheet].copy()
+                if "GroupName" in grp_dfs[sheet].columns:
                     grp_dfs[sheet] = dfs[sheet][dfs[sheet]["GroupName"] == group_name]
             workbook_data[group_name] = grp_dfs
 

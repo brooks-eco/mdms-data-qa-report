@@ -10,18 +10,19 @@ class BaseQAReportConfig:
     # None to produce reports for every GroupName in a global workbook
     # or can limit to just one group e.g. "LAC", MBG"
 
-    testing_group_name: str = ("MBG","LAC") #None for all
+    testing_group_name: str = "GWY" #None for all
 
     # -----------------------------------------------------------------
     # workbooks are downloaded from MDMS manually and placed in the workbooks folder
     # -----------------------------------------------------------------
 
     # input_file:str = "waterbirdsurvey_20260220153534.xlsx"
-    input_file:str = "Fish_20260223111704.xlsx"
+    #input_file:str = "Fish_20260223111704.xlsx"
     # input_file ="FishLarvae_20260223230007.xlsx"
     # input_file ="waterbirdsurvey_20260224100311.xlsx"
     #input_file = "Vegetation_20260219153548.xlsx"
     #input_file:str = "Vegetation_20260303135639.xlsx"
+    input_file:str = "Fish_20260304020619.xlsx"
     
     
     
