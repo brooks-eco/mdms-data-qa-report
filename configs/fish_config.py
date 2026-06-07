@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Any
+from typing import Any, Dict
+
 from config import BaseQAReportConfig
 
 
@@ -22,12 +23,12 @@ class FishQAReportConfig(BaseQAReportConfig):
     # Join definitions - this will be a dictionary where keys are the target table names and values are dictionaries that specify the join( right) table, the columns to join on, and the type of join. This will allow us to easily add more joins in the future without changing the code structure.
 
     joins_required: Dict[str, Dict[str, Any]] = field(default_factory=lambda: {
-        
+
         "FishSurveyEffort": {
             "right": "SamplePoints",
             "on": ["SamplePointName"],
             "how": "left",
-        }, 
+        },
         "FishAdultCatch": {
             "right": "FishSurveyEffort",
             "on": ["SamplePointName", "SampleDate", "SampleType", "SampleNumber"],
@@ -100,11 +101,8 @@ class FishQAReportConfig(BaseQAReportConfig):
                 "table": "FishAge",
                 "group_by": ["ScientificName"],
                 "summary": {
-                    "SampleNumber": "nunique",
-                    "SampleNumber": "count",
-                    "IndividualID": "nunique",
-                    "IndividualID": "count",
-
+                    "SampleNumber": ["nunique", "count"],
+                    "IndividualID": ["nunique", "count"],
                 },
             },
             "Age (lab-measures): Age data summary per species": {
@@ -131,21 +129,6 @@ class FishQAReportConfig(BaseQAReportConfig):
     # plot of multiple pie charts showing species composition (percent cover) by plot and sampling time. This will help identify if there are any plots or sampling times that have unusual species composition that may indicate data quality issues.
     plot_definitions: Dict[str, Dict[str, Any]] = field(
         default_factory=lambda: {
-            "Species Catch Composition - Individual Replicate Samples": {
-                "note": "Guidance: The dots are individual replicate counts for any dates.  This will expose outliers in individual replicates that may not be obvious once replicates are combined. (Limited to most abundant 15 species per plot)",
-                "type": "scatter",
-                "table": "FishAdultCatch",
-                "group_by": ["SamplePointName", "SampleType"],
-                "x": "Count",
-                "y": "ScientificName",
-                "color": "ScientificName",
-                "Legend": False,
-            },
-            
-            
-            
-            
-            
             "Species Catch Composition - Individual Replicate Samples": {
                 "note": "Guidance: The dots are individual replicate counts for any dates.  This will expose outliers in individual replicates that may not be obvious once replicates are combined. (Limited to most abundant 15 species per plot)",
                 "type": "scatter",

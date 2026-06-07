@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Set, Any
+from typing import Any, Dict, Set
+
 from config import BaseQAReportConfig
 
 

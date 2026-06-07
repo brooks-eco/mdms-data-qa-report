@@ -1,7 +1,8 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Any
-import pandas as pd
 from pathlib import Path
+from typing import Dict
+
+import pandas as pd
 
 
 @dataclass
@@ -10,7 +11,7 @@ class BaseQAReportConfig:
     # None to produce reports for every GroupName in a global workbook
     # or can limit to just one group e.g. "LAC", MBG"
 
-    testing_group_name: str = "GWY" #None for all
+    testing_group_name: str|tuple[str] = ("BBN") #None for all
 
     # -----------------------------------------------------------------
     # workbooks are downloaded from MDMS manually and placed in the workbooks folder
@@ -22,10 +23,11 @@ class BaseQAReportConfig:
     # input_file ="waterbirdsurvey_20260224100311.xlsx"
     #input_file = "Vegetation_20260219153548.xlsx"
     #input_file:str = "Vegetation_20260303135639.xlsx"
-    input_file:str = "Fish_20260304020619.xlsx"
-    
-    
-    
+    #input_file:str = "Fish_20260316170814.xlsx"
+    input_file:str = "Fish_20260602105327.xlsx"
+
+
+
 
     start_date: pd.Timestamp = pd.to_datetime("2024-06-01")
     end_date: pd.Timestamp = pd.to_datetime("2025-07-31")
@@ -63,9 +65,9 @@ def get_config(**kwargs) -> BaseQAReportConfig:
 
     # Import specific configs here to avoid circular dependency
     from configs.fish_config import FishQAReportConfig
+    from configs.fish_larvae_config import FishLarvaeQAReportConfig
     from configs.veg_config import VegQAReportConfig
     from configs.waterbird_config import WaterbirdQAReportConfig
-    from configs.fish_larvae_config import FishLarvaeQAReportConfig
 
 
     filename = input_file.lower()

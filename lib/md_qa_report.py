@@ -1,5 +1,5 @@
-from pathlib import Path
 import datetime
+
 
 class MarkdownQAReport:
     """
@@ -92,17 +92,17 @@ class MarkdownQAReport:
             elif summary_name in data_summary_definitions and "note" in data_summary_definitions[summary_name]:
                 self.content += f"{data_summary_definitions[summary_name]['note']}\n\n"
             self.content += f"*Source Table: {table_name}*\n\n"
-            
+
             headers = [str(c).replace("\n", "<br>") for c in summary_df.columns]
             self.content += "| " + " | ".join(headers) + " |\n"
             self.content += "| " + " | ".join(["---"] * len(headers)) + " |\n"
             for _, row in summary_df.iterrows():
                 row_vals = [
-                    str(x).replace("|", "\|").replace("\n", "<br>") for x in row.values
+                    str(x).replace("|", r"\|").replace("\n", "<br>") for x in row.values
                 ]
                 self.content += "| " + " | ".join(row_vals) + " |\n"
-            
-            self.content += f"\nDownload CSV\n\n"
+
+            self.content += "\nDownload CSV\n\n"
 
     def _add_plots(self, plot_collection, plot_definitions):
         """Adds plot images to the Markdown content."""
@@ -119,5 +119,5 @@ class MarkdownQAReport:
                 if plot_collection[plot_series_name] is None:
                     self.content += "No plots were generated for this series.\n\n"
                     continue
-                for plot_filename in plot_collection[plot_series_name]:
+                for _plot_filename in plot_collection[plot_series_name]:
                     self.content += f"!{plot_series_name}\n\n"

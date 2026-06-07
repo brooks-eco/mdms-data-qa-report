@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Any
+from typing import Any, Dict
+
 from config import BaseQAReportConfig
 
 
@@ -82,7 +83,7 @@ class VegQAReportConfig(BaseQAReportConfig):
                 "WaterDepth": ["min", "mean", "max"],
             },
         },
-        
+
         "Duration Dry per transect/plot x SampleDate": {
             "table": "VegCommunitySurvey",
             "group_by": ["SamplingUnitID", "SampleDate"],
@@ -90,8 +91,8 @@ class VegQAReportConfig(BaseQAReportConfig):
                 "DurationDry": ["min", "mean", "max"],
             },
         },
-        
-        
+
+
         "Count of Soil Moisture records per transect/plot x SampleDate": {
             "table": "VegCommunitySurvey",
             "group_by": ["SamplingUnitID", "SampleDate"],

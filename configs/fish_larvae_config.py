@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Any
+from typing import Any, Dict
+
 from config import BaseQAReportConfig
 
 
@@ -40,7 +41,7 @@ class FishLarvaeQAReportConfig(BaseQAReportConfig):
                 "summary": {"SampleNo": ["nunique", "count"]},
                 "filter": {"SampleType": {"==": "DriftNet"}},
             },
-            
+
             "Effort: Light Traps: unique sample id's (sample number) and count for each site": {
                 "note" : "look for outliers. Uneven sample counts or mismatched id counts may indicate missing data for some replicates.",
                 "table": "LarvaeSurveyEffort",
@@ -55,7 +56,7 @@ class FishLarvaeQAReportConfig(BaseQAReportConfig):
                 "summary": {"SampleNo": "count", "SampleDurationSec": "sum", "Pooled": "unique"},
                 #"filter": {"SampleType": {"!=": "DriftNet"}},
             },
-            
+
 
             "Drift Nets - Volume filtered completeness per site": {
                 "note" : "There should be a volumne filtered for every drift net sample.",
@@ -64,7 +65,7 @@ class FishLarvaeQAReportConfig(BaseQAReportConfig):
                 "summary": {"SampleDate": "count", "VolumeFiltered": "count"},
                 "filter": {"SampleType": {"==": "DriftNet"}},
             },
-            
+
             "Light Trap - Turbidity completeness per site": {
                 "note": "There should be a turbidity reading for every light trap sample.",
                 "table": "LarvaeSurveyEffort",
