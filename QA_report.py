@@ -537,7 +537,7 @@ def create_plots(joined_dfs, data_summaries, PLOTS_DEFINITION, output_path) -> l
     return plot_collection
 
 
-def generate_effort_summaries(joined_dfs, summaries_config):
+def generate_effort_summaries(joined_dfs, summaries_config, group_name):
     """
     Generates summary tables based on the provided configuration.
 
@@ -579,14 +579,15 @@ def generate_effort_summaries(joined_dfs, summaries_config):
                 f"Error: Columns {missing_cols} not found in table '{table_name}' for summary '{summary_name}'."
             )
 
-        # First we need to check a count of the number of groups to distinguish data sampling methods that are charactersised by large plot SampleUnitID vs (SamplePointName, TransectID) and many tiny quadrat SamplingUnitIDs
-        num_groups = df.groupby(group_by_cols).ngroups
+        # First we need to check a count of the number of groups to distinguish data sampling methods that are characterised by large plot SampleUnitID vs (SamplePointName, TransectID) and many tiny quadrat SamplingUnitIDs
+        num_groups = df.groupby(group_by_cols+['SamplingUnitID']).ngroups
         print(f"Summary '{summary_name}' has {num_groups} groups.")
-        if num_groups > 50:
+        if num_groups > 500:
             print(
                 f"Warning: Summary '{summary_name}' has a large number of groups ({num_groups}). This may indicate that the grouping is too granular or that there are many unique sampling units. Consider adjusting the grouping columns or checking for data quality issues."
             )
-            # replace SamplingUnitID with [SamplePointName, TransectID] if SamplingUnitID is in group_by_cols and those columns are in the dataframe and print a message about the replacement. This is to address the issue of having too many unique SamplingUnit IDs that may be due to having many small quadrats, which can make it difficult to identify
+            # replace SamplingUnitID with [SamplePointName, TransectID] if SamplingUnitID is in group_by_cols and those columns are in the dataframe and print a message about the replacement.
+            # This is to address the issue of having too many unique SamplingUnit IDs that may be due to having many small quadrats, which can make it difficult to identify
             if (
                 "SamplingUnitID" in group_by_cols
                 and "SamplePointName" in df.columns
@@ -600,10 +601,14 @@ def generate_effort_summaries(joined_dfs, summaries_config):
                     "TransectID",
                 ]
                 # Check summary functions. if sum in summary functions for any column  we need to replace with min and max
-                # this is because if we have many unique SamplingUnitIDs that are being summed together, we want to check the range of values for the new column to identify any potential data quality issues (e.g. if the sum is much higher than expected, it may indicate that there are many small quadrats with non-zero values that are being summed together, which could be a data quality issue or it could be a valid property of the data). By replacing the sum with min and max, we can check the range of values for the new column and identify any potential outliers or data quality issues.
+                # this is because if we have many unique SamplingUnitIDs that are being summed together, we want to check the range of values for the new column to identify any potential data quality issues
+                # (e.g. if the sum is much higher than expected, it may indicate that there are many small quadrats with non-zero values that are being summed together, which could be a data quality issue or it could be a valid property of the data).
+                # By replacing the sum with min and max, we can check the range of values for the new column and identify any potential outliers or data quality issues.
                 for col in list(summary_funcs.keys()):
-                    if summary_funcs[col] == "sum":
-                        summary_funcs[col] = ["min", "max"]
+                    if "sum" in summary_funcs[col]:
+                        #replace sum with mean
+                        summary_funcs[col] = ["min", "max", "mean"]
+
 
         # Group by specified columns and apply summary functions
         summary_df = df.groupby(group_by_cols).agg(summary_funcs).reset_index()
@@ -745,7 +750,7 @@ def generate_effort_summaries(joined_dfs, summaries_config):
                 qa_check_col = "QA Check\nSoilMoisture count\nvs QuadratPlotID count"
                 summary_df[qa_check_col] = ""
                 summary_df.loc[summary_df[col] != summary_df[plot_id_count_col], qa_check_col] = (
-                    f"{col_name} missing for QuadratPlotID"
+                    f"{col_name} missing"
                 )
                 # explicit check mark for valid range
                 summary_df.loc[
@@ -884,7 +889,7 @@ def main():
             )
 
         # Generate data summaries based on the defined DATA_SUMMARIES
-        data_summaries = generate_effort_summaries(joined_dfs, config.data_summary_definitions)
+        data_summaries = generate_effort_summaries(joined_dfs, config.data_summary_definitions, group_name)
         plot_collection = create_plots(
             joined_dfs, data_summaries, config.plot_definitions, output_path
         )

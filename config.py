@@ -24,7 +24,8 @@ class BaseQAReportConfig:
     #input_file = "Vegetation_20260219153548.xlsx"
     #input_file:str = "Vegetation_20260303135639.xlsx"
     #input_file:str = "Fish_20260316170814.xlsx"
-    input_file:str = "Fish_20260602105327.xlsx"
+    #input_file:str = "Fish_20260602105327.xlsx"
+    input_file:str = "Vegetation_20260716161352.xlsx"
 
 
 

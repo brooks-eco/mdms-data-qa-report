@@ -2,9 +2,9 @@
 
 ## Summary
 
-This python code provides a tool to automate the generation of data quality assurance (QA) reports from data exported from the Flow-MER Monitoring Data Management System (MDMS).
+This python code automates the generation of quality assurance (QA) reports for data exported from the Flow-MER Monitoring Data Management System (MDMS).
 
-The reports consist of statistical summaries and graphical plots designed to be sent back to data suppliers. The primary goal is to help suppliers visually inspect and validate their data, ensuring it is a complete and accurate representation of their field collections before it is finalised and published.
+The reports consist of statistical summaries and graphical plots designed to be sent back to data suppliers. The primary goal is to help suppliers visually inspect and validate their data, ensuring it is a complete and accurate representation of their field collections before it is finalised and published for use in evaluation and reporting.
 
 ## Data Quality Assurance Principles
 
@@ -24,7 +24,7 @@ Quality assurance is provided by activities that ensure high-quality data are be
 
 This code base performs the crucial second step in the quality process. While the MDMS is excellent at enforcing structural data standards, these summary reports helps identify more subtle issues.
 
-The quality reports are reviewed by the experts who collected the source data to ensure the data is accurate and as complete as possible. This review process has proven to be a critically important step for the early detection of data issues, particularly **mistakes in data entry**, **missing data** and the identification of **outliers** before the date is used as evidence in reporting. Data suppliers are responsible for reviewing these reports and confirming that the data are complete and accurate before data are declared ‘final’ and published.
+The quality reports are reviewed by the experts who collected the source data to ensure the data is accurate and as complete as possible. This review process has proven to be a critically important step for the early detection of data issues, particularly **mistakes in data entry**, **missing data** and the identification of **outliers** before the date is considered for use as scientific evidence. Data suppliers are responsible for reviewing these QA reports and confirming that the data are complete and accurate before data are declared ‘final’ and shared to science teams for use in reporting and research.
 
 How it works:
 
@@ -72,13 +72,12 @@ python.exe QA_report.py
 
 This code was built to do a specific job to help QA Flow-MER monitoring data from the Monitoring Data Management System (MDMS), not for production work using other data.
 The code may be usable but will contain `grotty hacks` that there was not time to polish out.
-Provided `as is` under a [Creative Commons  (CC BY 4.0) Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/). 
+Provided `as is` under a [Creative Commons  (CC BY 4.0) Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/).
 
 
 # Contact
 
 - Dr Shane Brooks
-- shane@brooks.eco
 - https://brooks.eco
 
 <a href="https:\\brooks.eco">![logoBrooks](logoBrooks.png)</a>
