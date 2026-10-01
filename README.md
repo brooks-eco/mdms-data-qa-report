@@ -28,14 +28,18 @@ The quality reports are reviewed by the experts who collected the source data to
 
 How it works:
 
-1. Monitoring data that are successfully uploaded to the MDMS are exported as Excel workbook files.
-2. This code base ingests those exports and creates statistical data summaries and graphic plots.
+1. Monitoring data that are successfully uploaded to the MDMS are exported as Excel workbook files or via API queries.
+2. This code base ingests the data and creates statistical data summaries and graphic plots.
 3. The reports are provided back to the data supplier to confirm that the data received match the expected data supply.
-4. After all issues are resolved the data is published to the [Flow-MER Data Portal](https://data.flow-mer.org.au) for use.
+4. After all issues are resolved the data are considered complete and ready to share
+5. When all required data is complete it is published to the [Flow-MER Data Portal](https://data.flow-mer.org.au) for use.
 
 ### Inputs
 
-A single Microsoft Excel workbook (`.xlsx`) data export from the MDMS. This workbook may contain data for one or more monitoring themes (e.g., Fish, Waterbirds, Vegetation) across one or more groups.
+Data is read from local Microsoft Excel workbook (`.xlsx`), or read directly from MDMS database via API
+
+- workbook - may contain data for one or more monitoring themes (e.g., Fish, Waterbirds, Vegetation) across one or more groups.
+- MDMS - reads the output of a preconfigured report
 
 ### Output Data
 
@@ -57,23 +61,21 @@ Python.  Requirements (key libraries)
         reportlab
         openpyxl
 
-```bash
+        ```bash
 
-# Install dependencies
-pip install -r requirements.txt
+        # Install dependencies
+        pip install -r requirements.txt
 
-#run script
-python.exe QA_report.py
+        #run script
+        python.exe QA_report.py
 
-```
-
+        ```
 
 ## Disclaimer
 
 This code was built to do a specific job to help QA Flow-MER monitoring data from the Monitoring Data Management System (MDMS), not for production work using other data.
 The code may be usable but will contain `grotty hacks` that there was not time to polish out.
 Provided `as is` under a [Creative Commons  (CC BY 4.0) Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/).
-
 
 # Contact
 

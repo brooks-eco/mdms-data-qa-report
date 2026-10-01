@@ -1,29 +1,51 @@
 from dataclasses import dataclass, field
-from typing import Any, Dict, Set
+from typing import Any
 
 from config import BaseQAReportConfig
 
 
 @dataclass
 class WaterbirdQAReportConfig(BaseQAReportConfig):
-    report_title: str = "Waterbird QA Report"
-    left_justify_columns: Set[str] = field(
+    report_title: str = "Waterbird Data QA"
+    change_log: list[dict[str, Any]] = field(
+        default_factory=lambda: [
+            {
+                "date": "29 Sept 2026",
+                "changes": [
+                    "Check zero count samples use pseudo-taxon NO WATERBIRDS",
+                ],
+            },
+            {
+                "date": "23 Feb 2026",
+                "changes": ["Initial release"],
+            },
+        ]
+    )
+    left_justify_columns: set[str] = field(
         default_factory=lambda: {"BreedingNotes", "SamplePointName\nunique"}
     )
     data_url = "https://mdms.essolutions.com.au/workbooks/download/8"
 
+    mdms_reports = {
+        # table_name: report_API_shortcode
+        "WaterbirdCounts": "waterbird-survey",
+    }
+
     # WaterbirdSurveys: SamplePointName	VisitDate	SurveyNumber	StartTime	EndTime	Observers	SurveyMethod	eWaterTiming	InundatedArea	AirTemp	Rain	CloudCoverPercent	WindSpeed	WindDirection	SurveyCoverage	Disturbance	CompDataID	Comment
     # WaterbirdCounts: SamplePointName	VisitDate	SurveyNumber	ScientificName	ObsType	TotalCount	BroodsNests	BreedingNotes	CountAccuracy	Comment
 
-    joins_required: Dict[str, Dict[str, Any]] = field(default_factory=lambda: {
-        "WaterbirdCounts": {
-            "right": "WaterbirdSurveys",
-            "on": ["SamplePointName", "VisitDate", "SurveyNumber"],
-            "how": "left",
-        },
-    })
+    joins_required: list[dict[str, Any]] = field(
+        default_factory=lambda: [
+            {
+                "left": "WaterbirdCounts",
+                "right": "WaterbirdSurveys",
+                "on": ["SamplePointName", "VisitDate", "SurveyNumber"],
+                "how": "left",
+            },
+        ]
+    )
 
-    data_summary_definitions: Dict[str, Dict[str, Any]] = field(
+    data_summary_definitions: dict[str, dict[str, Any]] = field(
         default_factory=lambda: {
             "Effort: Ground survey - Number of sampling dates per site with max, min coverage": {
                 "note": "Check this matches your field program. ",
@@ -84,7 +106,7 @@ class WaterbirdQAReportConfig(BaseQAReportConfig):
     )
 
     # plot of multiple pie charts showing species composition (percent cover) by plot and sampling time. This will help identify if there are any plots or sampling times that have unusual species composition that may indicate data quality issues.
-    plot_definitions: Dict[str, Dict[str, Any]] = field(
+    plot_definitions: dict[str, dict[str, Any]] = field(
         default_factory=lambda: {
             "Timing of site surveys (VisitDate) and SurveyCoverage for each SamplePointName": {
                 "note": "Check this matches your field program and there are no surveys out of place or missing (may be hard to see in plots but should be visible Table 2 above).",

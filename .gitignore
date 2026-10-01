@@ -1,8 +1,45 @@
+./
+../
 .venv/
-*.pdf
-log/
-*.xlsx
-__pycache__/
+.backups/
+.tmp/
+.git/
+.gitignore
+*.egg-info
+*.egg-info/
+.prj*
+.vscode/
+build/
+.coverage
 
+*.csv
+*.zip
+*.pyc
+
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+
+dev/
+log/
+
+# DotEnv configuration
+.env
+env/
+
+# Python compiled
+**/*.pyc
+**/__pycache__/
+
+# VS Code
+.vscode/
 .cspell/
 *.code-workspace
+
+# Ruff stuff:
+.ruff_cache/
+
+
+*.pdf
+*.xlsx

@@ -1,6 +1,8 @@
 import datetime
+import logging
 from html import escape
 
+import pandas as pd
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
@@ -17,13 +19,79 @@ from reportlab.platypus import (
     TableStyle,
 )
 
+logger = logging.getLogger(__name__)
+
+
+def format_summary_dataframe(summary_df):
+    """Format summary values for display without modifying the source dataframe."""
+    formatted = summary_df.copy()
+    numeric_columns = formatted.select_dtypes(include=["number"]).columns
+
+    def format_number(value):
+        if pd.isna(value):
+            return str(value)
+        if 0 < value < 0.01:
+            return "<0.01"
+        if -0.01 < value < 0:
+            return ">-0.01"
+        return str(round(value, 2))
+
+    for column in numeric_columns:
+        formatted[column] = formatted[column].map(format_number)
+
+    return formatted.astype(str)
+
+
+def build_change_log_table_data(change_log, today=None):
+    """Convert grouped thematic changelog entries to PDF table rows."""
+    rows = [["Date", "Changes"]]
+    today = today or datetime.datetime.now(tz=datetime.UTC).date()
+    cutoff = pd.Timestamp(today) - pd.DateOffset(months=6)
+    old_date_style = ParagraphStyle("ChangeLogDate", fontSize=9, alignment=1)
+    new_date_style = ParagraphStyle("ChangeLogDate", fontSize=9, alignment=2)
+    changelog_style = ParagraphStyle("ChangeLogEntry", fontSize=9)
+
+    for release in change_log:
+        release_date = _parse_change_log_date(release["date"])
+        is_new = release_date is not None and cutoff.date() < release_date <= today
+        for index, change in enumerate(release["changes"]):
+            date_style = old_date_style
+            display_date = release["date"] if index == 0 else ""
+            if is_new:
+                date_text = f"{escape(display_date)} " if display_date else ""
+                display_date = f'{date_text}<font color="red"><b>NEW!</b></font>'
+                date_style = new_date_style
+            rows.append([Paragraph(display_date, date_style), Paragraph(change, changelog_style)])
+    return rows
+
+
+def _parse_change_log_date(date_text):
+    """Parse supported human-readable change-log dates, returning None if unknown."""
+    normalized_text = date_text.replace("Sept ", "Sep ")
+    for date_format in (
+        "%d %b %Y",
+        "%d %B %Y",
+        "%b %Y",
+        "%B %Y",
+        "%Y-%m-%d",
+    ):
+        try:
+            return (
+                datetime.datetime.strptime(normalized_text, date_format)
+                .replace(tzinfo=datetime.UTC)
+                .date()
+            )
+        except ValueError:
+            continue
+    return None
+
 
 class PDFQAReport:
     """
     Handles the generation of the PDF QA Report using ReportLab.
     """
 
-    def __init__(self, output_path, group_name, report_title_str):
+    def __init__(self, output_path, group_name, group_long_name, report_title_str):
         """
         Initializes the PDF report generator.
 
@@ -34,9 +102,10 @@ class PDFQAReport:
         """
         self.output_path = output_path
         self.group_name = group_name
+        self.group_long_name = group_long_name
         self.report_title_str = report_title_str
         # get date-time stamp to include in filename
-        date_stamp = datetime.datetime.now().strftime("%Y%m%d")
+        date_stamp = datetime.datetime.now(tz=datetime.UTC).strftime("%Y%m%d")
         self.filename = self._make_safe(f"{group_name}_{report_title_str}_{date_stamp}.pdf")
         self.pdf_report_path = output_path / self.filename
 
@@ -75,6 +144,11 @@ class PDFQAReport:
             parent=self.styles["Normal"],
             fontSize=9,
         )
+        self.centred_italics_style = ParagraphStyle(
+            "CenteredItalics",
+            parent=self.styles["Italic"],
+            alignment=TA_CENTER,
+        )
         self.bold_style = ParagraphStyle(
             "Bold",
             parent=self.styles["Normal"],
@@ -86,15 +160,15 @@ class PDFQAReport:
         self,
         data_summaries,
         plot_collection,
-        input_filename,
+        data_source,
         start_dt,
         end_dt,
         plot_definitions,
         data_summary_definitions,
-        group_id,
         data_date,
         data_url=None,
         left_justify_columns=None,
+        change_log=None,
     ):
         """
         Assembles and builds the PDF report.
@@ -111,6 +185,7 @@ class PDFQAReport:
             data_date (str): Date string of when the data was exported.
             data_url (str, optional): URL to download the data.
             left_justify_columns (set, optional): Set of column names to left-justify in tables.
+            change_log (list, optional): Thematic report changes grouped by release date.
         """
         # Header and Title
         self.elements.append(
@@ -124,76 +199,182 @@ class PDFQAReport:
         )
         self.elements.append(Spacer(1, 9))
 
-        title = Paragraph(f"{self.group_name} {self.report_title_str}", self.title_style)
+        title = Paragraph(f"{self.report_title_str} - {self.group_long_name}", self.title_style)
         self.elements.append(title)
 
         start_year = start_dt.year
         end_year = end_dt.year
         self.elements.append(
-            Paragraph(f"{start_year}/{end_year} water-year.", self.styles["Centered"])
+            Paragraph(f"{start_year}/{end_year} water-year", self.centred_italics_style)
         )
-        self.elements.append(Spacer(1, 9))
-        self.elements.append(Paragraph(f"Data from: {input_filename}", self.styles["Italic"]))
+
         self.elements.append(Spacer(1, 9))
 
+        source_data = [
+            [
+                Paragraph("Data Source:", self.normal_style),
+                Paragraph(data_source, self.normal_style),
+                Image(
+                    f"resources//{self.group_name}.png",
+                    width=3.5 * cm,
+                    height=3.5 * cm,
+                    kind="proportional",
+                    hAlign="CENTER",
+                )
+            ],
+            [
+                Paragraph("Exported from MDMS:", self.normal_style),
+                Paragraph(f"<b>{data_date}</b>", self.normal_style),
+            ],
+            [
+                Paragraph("Date Range:", self.normal_style),
+                Paragraph(
+                    f"<b>{start_dt.strftime('%Y-%m-%d')}</b> to <b>{end_dt.strftime('%Y-%m-%d')}</b>",
+                    self.normal_style,
+                ),
+            ],
+            [
+                Paragraph("This QA report generated:", self.normal_style),
+                Paragraph(
+                    f"<b>{datetime.datetime.now(tz=datetime.UTC).astimezone().strftime('%Y-%m-%d %H:%M:%S')}</b>",
+                    self.normal_style,
+                ),
+            ],
+        ]
+        source_table = Table(source_data, colWidths=[4.5 * cm, 11 * cm, None])
+        source_table.setStyle(
+            TableStyle(
+                [
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 5),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+                    ("TOPPADDING", (0, 0), (-1, -1), 2),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                    ("GRID", (0, 0), (1, -1), 0.5, colors.grey),
+                    ("SPAN", (-1, 0), (-1, -1)),
+                    ("LEFTPADDING", (-1, 0), (-1, -1), 15),
+                    ("TOPPADDING", (-1, 0), (-1, -1), -35),
+                    ("VALIGN", (-1, 0), (-1, -1), "BOTTOM"),
+                ]
+            )
+        )
+        self.elements.append(source_table)
+        self.elements.append(Spacer(1, 9))
         # Intro
-        self._add_intro_text(data_url, data_date)
+        self._add_intro_text(data_url)
 
+        if change_log:
+            self._add_change_log(change_log)
         # Glossary
         self._add_glossary()
 
         # Summaries
+        self.elements.append(CondPageBreak(15 * cm))
         self.elements.append(Paragraph("Review Tabular Summaries", self.h1))
         self.elements.append(Spacer(1, 9))
         self._add_summary_tables(data_summaries, data_summary_definitions, left_justify_columns)
 
         # Plots
-        self.elements.append(CondPageBreak(12 * cm))
-        self.elements.append(Spacer(1, 9))
+        self.elements.append(CondPageBreak(15 * cm))
         self.elements.append(Paragraph("Review Graphical Summaries", self.h1))
         self._add_plots(plot_collection, plot_definitions)
 
         # Build
         self.doc.build(self.elements, onFirstPage=self._footer, onLaterPages=self._footer)
-        print(f"PDF QA Report saved to {self.pdf_report_path}")
+        logger.info("PDF QA Report saved to %s", self.pdf_report_path)
 
-    def _add_intro_text(self, data_url, data_date):
+    def _add_intro_text(self, data_url):
         """
         Adds the introductory text, action required notice, and contact information to the report.
         """
         intro = Paragraph(
-            "This report reflects your data back to you in summaries that are intended to help you "
-            "identify data quality issues including missing values, inconsistent sampling effort "
-            "and/or outliers.  QA Checks in the summary tables indicate issues for you to investigate, "
-            "noting that these may reflect valid properties of the data (e.g. multi-layered vegetation "
-            "can have > 100% cover).",
+            "This report summarises your data to highlight potential quality issues including missing values, "
+            "inconsistent sampling effort and outliers. QA Checks in the summary tables are to direct your review. "
+            "Some checks may be triggered by the sampling design or valid properties of the data.",
             self.normal_style,
         )
         self.elements.append(intro)
+
+
         self.elements.append(Spacer(1, 9))
 
-        action = Paragraph(
-            "ACTION REQUIRED: Confirm via email that this data summary has been reviewed and found to be a complete and an accurate representation of the data you provided. "
-            "Email to confirm any data quality issues and upload your corrections to the MDMS as soon as possible.",
-            self.bold_style,
-        )
-        self.elements.append(action)
-        self.elements.append(Spacer(1, 9))
-
-        contact = Paragraph(
-            "If you have any questions about how to interpret the summaries or plots, or feedback to improve the process, please reach out to discuss.",
-            self.normal_style,
-        )
-        self.elements.append(contact)
-
-        if data_url:
-            self.elements.append(Spacer(1, 9))
-            self.elements.append(
+        self.elements.append(Paragraph("Action Required", self.styles["Heading2"]))
+        actions_required = [
+            [
+                Paragraph("(1) Review", self.bold_style),
                 Paragraph(
-                    f'<a href="{data_url}" color="blue">Download current matching data from the Flow-MER MDMS</a> or obtain from your area team data manager. <i>Current data may have changed. This report was generated on MDMS data exported {data_date}</i>.',
+                    "Check the provided table summaries and plots. Use the provided notes and glossary below to help interpret table columns or reach out to the Basin-scale data team for assistance.",
                     self.normal_style,
-                )
+                ),
+            ],
+            [
+                Paragraph("(2) Correct if necessary", self.bold_style),
+                Paragraph(
+                    'Work with your area Data Manager to upload any identified corrections to the MDMS. When corrections are complete Area Data Managers should re-mark the data as `provided` in the <a href="https://mdms.essolutions.com.au/tracker" color="blue">MDMS Tracker</a> and <b>a new QA report will be issued</b>.',
+                    self.normal_style,
+                ),
+            ],
+            [
+                Paragraph("(3) Confirm Complete", self.bold_style),
+                Paragraph(
+                    'If no issues are found Data Managers please mark data as `complete` in the <a href="https://mdms.essolutions.com.au/tracker" color="blue">MDMS Tracker</a>.',
+                    self.normal_style,
+                ),
+            ],
+        ]
+        actions_table = Table(actions_required, colWidths=[4 * cm, None])
+        actions_table.setStyle(
+            TableStyle(
+                [
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 5),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+                    ("TOPPADDING", (0, 0), (-1, -1), 2),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                ]
             )
+        )
+        self.elements.append(actions_table)
+        self.elements.append(Spacer(1, 9))
+
+        # if data_url:
+        #     self.elements.append(Spacer(1, 9))
+        #     self.elements.append(
+        #         Paragraph(
+        #             f'<a href="{data_url}" color="blue">Download current matching data from the Flow-MER MDMS</a> or obtain from your area team data manager. <i>Current data may have changed - refer export date above.</i>',
+        #             self.normal_style,
+        #         )
+        #     )
+        self.elements.append(Spacer(1, 9))
+
+    def _add_change_log(self, change_log):
+        """
+        Adds a changelog table to the report, showing version history and changes.
+        """
+        self.elements.append(Paragraph("Recent Changes", self.styles["Heading2"]))
+        self.elements.append(
+            Paragraph(
+                "New QA tests and data summaries may have been added since your last data review",
+                self.normal_style,
+            )
+        )
+        changelog_data = build_change_log_table_data(change_log)
+        changelog_table = Table(changelog_data, colWidths=[3.5 * cm, None])
+        changelog_table.setStyle(
+            TableStyle(
+                [
+                    ("FONTSIZE", (0, 0), (-1, -1), 9),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                    ("TOPPADDING", (0, 0), (-1, -1), 2),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                ]
+            )
+        )
+        self.elements.append(changelog_table)
         self.elements.append(Spacer(1, 9))
 
     def _add_glossary(self):
@@ -250,6 +431,13 @@ class PDFQAReport:
                     self.normal_style,
                 ),
             ],
+            [
+                Paragraph("zero count for species:", self.bold_style),
+                Paragraph(
+                    "Alert to zero values for counts, mean or sum.  Check if valid.",
+                    self.normal_style,
+                ),
+            ],
         ]
         glossary_table = Table(glossary_data, colWidths=[3 * cm, None])
         glossary_table.setStyle(
@@ -277,14 +465,7 @@ class PDFQAReport:
                 Paragraph(f"Table {table_counter}: {summary_name}", self.styles["Heading2"])
             )
             table_counter += 1
-            if summary_df.empty:
-                self.elements.append(
-                    Paragraph(
-                        "      No data supplied that supports this summary.", self.styles["Italic"]
-                    )
-                )
-                continue
-            elif (
+            if (
                 summary_name in data_summary_definitions
                 and "note" in data_summary_definitions[summary_name]
             ):
@@ -292,14 +473,18 @@ class PDFQAReport:
                     Paragraph(data_summary_definitions[summary_name]["note"], self.normal_style)
                 )
                 self.elements.append(Spacer(1, 6))
+            if summary_df.empty:
+                self.elements.append(
+                    Paragraph(
+                        "      No data supplied that supports this summary.", self.styles["Italic"]
+                    )
+                )
+                continue
 
             self.elements.append(Paragraph(f"Source Table: {table_name}", self.styles["Italic"]))
             self.elements.append(Spacer(1, 6))
 
-            numeric_cols = summary_df.select_dtypes(include=["number"]).columns
-            summary_df[numeric_cols] = summary_df[numeric_cols].round(2)
-
-            df_str = summary_df.astype(str)
+            df_str = format_summary_dataframe(summary_df)
             available_width = self.doc.width
 
             col_alignments = []
@@ -386,6 +571,13 @@ class PDFQAReport:
                 )
             )
             self.elements.append(t)
+            table_footer_style = ParagraphStyle(
+                "table_footer",
+                parent=self.styles["Normal"],
+                fontSize=5,
+                leftIndent=(self.doc.width - sum(col_widths)) / 2 + sum(col_widths) - 30,
+            )
+            self.elements.append(Paragraph(f"{len(df_str)} rows", table_footer_style))
             self.elements.append(Spacer(1, 9))
 
     def _add_plots(self, plot_collection, plot_definitions):
@@ -412,7 +604,7 @@ class PDFQAReport:
                     and "note" in plot_definitions[plot_series_name]
                 ):
                     self.elements.append(
-                        Paragraph(plot_definitions[plot_series_name]["note"], self.styles["Normal"])
+                        Paragraph(plot_definitions[plot_series_name]["note"], self.normal_style)
                     )
                     self.elements.append(Spacer(1, 6))
 
@@ -465,6 +657,15 @@ class PDFQAReport:
     def _footer(self, canvas, doc):
         """Draws the page number footer on each page."""
         canvas.saveState()
-        canvas.setFont("Helvetica", 9)
-        canvas.drawString(cm, 0.75 * cm, "Page %d" % doc.page)
+        footer_y = 0.5 * cm
+        footer_style = ParagraphStyle("footer", fontSize=8)
+        p = Paragraph(
+            'For help interpreting summaries or plots, or to provide feedback, '
+            '<a href="mailto:data@flow-mer.org.au" color="blue">email the data team</a>',
+            footer_style,
+        )
+        p.wrapOn(canvas, doc.width * 0.75, 20)
+        p.drawOn(canvas, doc.leftMargin, footer_y)
+        canvas.setFont("Helvetica", 8)
+        canvas.drawRightString(doc.leftMargin + doc.width, footer_y, f"Page {doc.page}")
         canvas.restoreState()
