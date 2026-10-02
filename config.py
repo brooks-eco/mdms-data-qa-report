@@ -24,12 +24,14 @@ class BaseQAReportConfig:
     # input_file:str = "Vegetation_20260303135639.xlsx"
     # input_file:str = "Fish_20260316170814.xlsx"
     # input_file: str = "Fish_20260602105327.xlsx"
-    # input_file: str = "Vegetation_20260930020958.xlsx"
-    input_file: str = "vegetation"
+    input_file: str = "Vegetation_20260930020958.xlsx"
+    # input_file: str = "vegetation"
     #input_file: str = "fish"
-    #input_file: str = "fishlarvae"
+    # input_file: str = "fishlarvae"
     # input_file: str = "FishLarvae_20260929165520.xlsx"
-    #input_file: str = "Fish_20260930222835.xlsx"
+    # input_file: str = "Fish_20260930222835.xlsx"
+    # input_file: str = "waterbirdsurvey_20261001182845.xlsx"
+    #input_file: str = "waterbirdsurvey"
 
     start_date: pd.Timestamp = pd.to_datetime("2025-06-01")
     end_date: pd.Timestamp = pd.to_datetime("2026-07-31")
@@ -40,20 +42,20 @@ class BaseQAReportConfig:
     output_path: Path = Path("outputs")
     group_id: dict[str, tuple[int, str]] = field(
         default_factory=lambda: {
-            #"BAL": (15, "Lower Balonne Area"),
-            "BBN": (16,"Border Barwon Namoi Area"),
-            #"DAR": (18,"Darling Warrego Area"),
-            "DWG": (18,"Darling Warrego Area"),
-            "GNT": (23,"Goulburn & Northern Tributaries Area"),
-            "GWY": (17,"Gwydir Area"),
-            "LAC": (20,"Lachlan Area"),
-            "LBN": (15,"Lower Balonne Area"),
-            "LWM": (24,"Lower Murray & CLLMM Area"),
-            #"LMY": (24,"Lower Murray & CLLMM Area"),
-            "MAC": (19,"Macquarie Area"),
-            "MBG": (21,"Murrumbidgee Area"),
-            "MMY": (22,"Mid-Murray Area"),
-            "MDB": (14,"Basin-scale Project"),
+            # "BAL": (15, "Lower Balonne Area"),
+            "BBN": (16, "Border Barwon Namoi Area"),
+            # "DAR": (18,"Darling Warrego Area"),
+            "DWG": (18, "Darling Warrego Area"),
+            "GNT": (23, "Goulburn & Northern Tributaries Area"),
+            "GWY": (17, "Gwydir Area"),
+            "LAC": (20, "Lachlan Area"),
+            "LBN": (15, "Lower Balonne Area"),
+            "LWM": (24, "Lower Murray & CLLMM Area"),
+            # "LMY": (24,"Lower Murray & CLLMM Area"),
+            "MAC": (19, "Macquarie Area"),
+            "MBG": (21, "Murrumbidgee Area"),
+            "MMY": (22, "Mid-Murray Area"),
+            "MDB": (14, "Basin-scale Project"),
         }
     )
 

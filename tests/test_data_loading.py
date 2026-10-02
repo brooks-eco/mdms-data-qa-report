@@ -8,6 +8,7 @@ import pytest
 from dotenv import load_dotenv
 
 from load_data import join_tables_generic, load_data, load_workbook_data, normalize_dataframe
+from utils import filter_df
 
 
 def test_normalize_dataframe_preserves_missing_or_existing_group_column() -> None:
@@ -24,6 +25,22 @@ def test_normalize_dataframe_preserves_missing_or_existing_group_column() -> Non
     assert "GroupName" not in ungrouped.columns
     assert legacy_group["GroupName"].tolist() == ["LAC"]
     assert named_group["GroupName"].tolist() == ["LAC"]
+
+
+def test_normalize_dataframe_treats_empty_strings_as_missing_for_filters() -> None:
+    api_data = pd.DataFrame({"RecordID": [1, 2, 3], "ScientificName": ["Species A", "", None]})
+    workbook_data = pd.DataFrame(
+        {"RecordID": [1, 2, 3], "ScientificName": ["Species A", pd.NA, pd.NA]}
+    )
+
+    normalized_api = normalize_dataframe(api_data, filter_date=False, start=None, end=None)
+    normalized_workbook = normalize_dataframe(
+        workbook_data, filter_date=False, start=None, end=None
+    )
+
+    api_result = filter_df({"ScientificName": "is not null"}, normalized_api)
+    workbook_result = filter_df({"ScientificName": "is not null"}, normalized_workbook)
+    assert api_result["RecordID"].tolist() == workbook_result["RecordID"].tolist() == [1]
 
 
 def test_normalize_dataframe_warns_when_date_filter_removes_all_rows(caplog) -> None:

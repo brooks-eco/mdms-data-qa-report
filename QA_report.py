@@ -34,7 +34,9 @@ def _write_reports(
             summary_df.to_csv(output_csv, index=False)
             logger.info("Data summary table '%s' saved to %s", summary_name, output_csv)
 
-        markdown_report = MarkdownQAReport(output_path, group_name, group_long_name, config.report_title)
+        markdown_report = MarkdownQAReport(
+            output_path, group_name, group_long_name, config.report_title
+        )
         markdown_report.create_report(
             data_summaries,
             plot_collection,

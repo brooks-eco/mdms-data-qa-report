@@ -66,6 +66,21 @@ def create_single_scatter_plot(
     y_axis_title=True,
 ):
     """Draw one scatter plot on the supplied axes."""
+    x_is_categorical = not is_numeric_dtype(df[x_col]) and not is_datetime64_any_dtype(df[x_col])
+    x_categories = list(pd.unique(df[x_col].dropna())) if x_is_categorical else None
+    x_positions = (
+        {category: position for position, category in enumerate(x_categories)}
+        if x_categories is not None
+        else None
+    )
+    y_is_categorical = not is_numeric_dtype(df[y_col]) and not is_datetime64_any_dtype(df[y_col])
+    y_categories = list(pd.unique(df[y_col].dropna())) if y_is_categorical else None
+    y_positions = (
+        {category: position for position, category in enumerate(y_categories)}
+        if y_categories is not None
+        else None
+    )
+
     if color_col and color_col in df.columns:
         categories = df[color_col].dropna().unique()
         if not color_map:
@@ -73,12 +88,14 @@ def create_single_scatter_plot(
 
         for index, category in enumerate(categories):
             subset = df[df[color_col] == category]
+            x_values = subset[x_col].map(x_positions) if x_positions is not None else subset[x_col]
+            y_values = subset[y_col].map(y_positions) if y_positions is not None else subset[y_col]
             color = (
                 color_map.get(str(category), "#808080")
                 if color_map
                 else colors[index % len(colors)]
             )
-            ax.scatter(subset[x_col], subset[y_col], label=str(category), color=color, alpha=0.8)
+            ax.scatter(x_values, y_values, label=str(category), color=color, alpha=0.8)
 
         if show_legend:
             legend_items = (
@@ -88,7 +105,14 @@ def create_single_scatter_plot(
             )
             ax.legend(legend_items, title=color_col, bbox_to_anchor=(1.05, 1), loc="upper left")
     else:
-        ax.scatter(df[x_col], df[y_col], alpha=0.8)
+        x_values = df[x_col].map(x_positions) if x_positions is not None else df[x_col]
+        y_values = df[y_col].map(y_positions) if y_positions is not None else df[y_col]
+        ax.scatter(x_values, y_values, alpha=0.8)
+
+    if x_categories is not None:
+        ax.set_xticks(range(len(x_categories)), labels=[str(category) for category in x_categories])
+    if y_categories is not None:
+        ax.set_yticks(range(len(y_categories)), labels=[str(category) for category in y_categories])
 
     if pd.api.types.is_datetime64_any_dtype(df[x_col]):
         ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter("%Y-%m-%d"))
@@ -196,7 +220,7 @@ def create_plots(joined_dfs, data_summaries, plots_definition, output_path):
                 )
                 title = " | ".join(map(str, group_key_tuple))
 
-            #title = title + f" (n={len(group_df)})"
+            # title = title + f" (n={len(group_df)})"
 
             if plot_type == "pie":
                 create_single_pie_plot(
@@ -223,7 +247,7 @@ def create_plots(joined_dfs, data_summaries, plots_definition, output_path):
                     show_legend=config.get("Legend", True),
                     wrap_legend=len(groups) > 4,
                     color_map=color_map,
-                    y_axis_title = config.get("y_axis_title", True),
+                    y_axis_title=config.get("y_axis_title", True),
                 )
 
             plt.tight_layout()
@@ -241,7 +265,7 @@ def create_plots(joined_dfs, data_summaries, plots_definition, output_path):
     return plot_collection
 
 
-def _prepare_scatter_data(group_df, config):
+def _prepare_scatter_data(group_df, config, y_limit=15):
     x_column = config.get("x")
     y_column = config.get("y")
     color_column = config.get("color")
@@ -249,12 +273,21 @@ def _prepare_scatter_data(group_df, config):
     if dataframe.empty or dataframe[x_column].isna().all() or dataframe[y_column].isna().all():
         return None
 
+    for column in (x_column, y_column):
+        if "date" not in str(column).lower() or is_datetime64_any_dtype(dataframe[column]):
+            continue
+        parsed_dates = pd.to_datetime(dataframe[column], errors="coerce")
+        supplied_values = dataframe[column].notna()
+        if parsed_dates.loc[supplied_values].notna().all():
+            dataframe[column] = parsed_dates
+
     x_is_numeric = is_numeric_dtype(dataframe[x_column])
     y_is_numeric = is_numeric_dtype(dataframe[y_column])
     x_is_datetime = is_datetime64_any_dtype(dataframe[x_column])
     y_is_datetime = is_datetime64_any_dtype(dataframe[y_column])
 
     aggregate_function = config.get("aggregate_function")
+    selected_y_values = None
     if aggregate_function:
         if x_is_numeric and not y_is_numeric:
             aggregate_columns = [y_column]
@@ -270,24 +303,50 @@ def _prepare_scatter_data(group_df, config):
             dataframe = dataframe.groupby(aggregate_columns, as_index=False)[y_column].agg(
                 aggregate_function
             )
+    elif x_is_numeric and not y_is_numeric and not y_is_datetime:
+        mean_by_y_value = dataframe.groupby(y_column)[x_column].mean()
+        selected_y_values = mean_by_y_value.nlargest(y_limit).index
+        dataframe = dataframe[dataframe[y_column].isin(selected_y_values)]
 
     if not x_is_numeric and not x_is_datetime:
         dataframe[x_column] = dataframe[x_column].astype(str).str[:25]
         if y_is_numeric:
-            dataframe = dataframe.sort_values(by=y_column).tail(15)
+            dataframe = dataframe.sort_values(by=y_column).tail(y_limit)
         else:
             dataframe = dataframe.sort_values(by=x_column)
 
     if not y_is_numeric and not y_is_datetime:
+        if selected_y_values is not None:
+            bottom_to_top = {
+                value: position for position, value in enumerate(reversed(selected_y_values))
+            }
+            dataframe = dataframe.sort_values(
+                by=y_column,
+                key=lambda values: values.map(bottom_to_top),
+                kind="stable",
+            )
         dataframe[y_column] = dataframe[y_column].astype(str).str[:25]
         if x_is_numeric:
-            dataframe = dataframe.sort_values(by=x_column).tail(15)
+            if aggregate_function:
+                dataframe = dataframe.sort_values(by=x_column).tail(y_limit)
+            elif selected_y_values is None:
+                dataframe = dataframe.sort_values(by=x_column)
         elif x_is_datetime:
             dataframe = dataframe.sort_values(by=y_column)
         else:
             dataframe = dataframe.sort_values(by=y_column)
 
-    if config.get("sort_y", False):
+    if config.get("sort_y", False) and selected_y_values is None:
         dataframe = dataframe.sort_values(by=y_column, ascending=False)
 
+    if x_is_datetime and (y_is_numeric or y_is_datetime):
+        dataframe = dataframe.sort_values(by=x_column, kind="stable")
+    elif y_is_datetime and (x_is_numeric or x_is_datetime):
+        dataframe = dataframe.sort_values(by=y_column, kind="stable")
+
     return dataframe
+
+
+def prepare_scatter_data(group_df, config, y_limit=15):
+    """Prepare scatter data, retaining raw rows for the highest-mean Y categories."""
+    return _prepare_scatter_data(group_df, config, y_limit=y_limit)

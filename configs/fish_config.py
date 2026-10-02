@@ -7,7 +7,9 @@ from config import BaseQAReportConfig
 @dataclass
 class FishQAReportConfig(BaseQAReportConfig):
     """
-    Configuration class for the Fish QA Report. This class holds all the configuration settings for the report, including file paths, sheet names, column names, join definitions, summary definitions, and plot definitions. This allows us to easily manage and update the configuration settings in one place without changing the code structure of the report generation.
+    Configuration class for the Fish QA Report. Holds all configuration settings including
+    file paths, sheet names, column names, join definitions, summary definitions, and plot
+    definitions to allow easy management without changing the report generation code structure.
     """
 
     # --- Configuration ---
@@ -17,7 +19,7 @@ class FishQAReportConfig(BaseQAReportConfig):
             {
                 "date": "29 Sept 2026",
                 "changes": [
-                    "Added Summary table to expose zero count samples that should use pseudo-taxon NO FISH",
+                    "Added Summary table to expose zero count samples that should use pseudo-taxon NO FISH",  # noqa: E501
                     "Added Alert for zero values for counts and measures",
                 ],
             },
@@ -32,7 +34,7 @@ class FishQAReportConfig(BaseQAReportConfig):
 
     mdms_reports = {
         # table_name: report_API_shortcode
-        "FishSurveyEffort": "fish-survey-effort-qa",
+        "FishSurveyEffort": "qa-fish-survey-effort",
         "FishAdultCatch": "fish-adult-catch",
         "FishLengthWeight": "fish-length-weight",
         "FishAge": "fish-age",
@@ -105,7 +107,12 @@ class FishQAReportConfig(BaseQAReportConfig):
                 "summary": {"SampleDate": "nunique"},
             },
             "Alert: Survey efforts with no FishAdultCatch species catch data": {
-                "note": "There should be no data here. Any displayed rows are a survey effort that has no matching `Fish Adult Catch` data records. If a sample was taken but no fish were counted record the species as `No Fish` with count = 0. If the sample was not collected (e.g. no site access) remove the Fish Survey Effort record.",
+                "note": (
+                    "There should be no data here. Any displayed rows are a survey effort that has "
+                    "no matching `Fish Adult Catch` data records. If a sample was taken but no fish "
+                    "were counted record the species as `No Fish` with count = 0. If the sample was "
+                    "not collected (e.g. no site access) remove the Fish Survey Effort record."
+                ),
                 "table": "FishSurveyEffort",
                 "group_by": ["SampleType", "SamplePointName", "SampleDate", "SampleNumber"],
                 "summary": {"CatchRecordCount": ["sum"]},
@@ -117,7 +124,11 @@ class FishQAReportConfig(BaseQAReportConfig):
                 "summary": {"Count": "sum", "ScientificName": "nunique"},
             },
             "Species with ZERO count in a Sample x SamplePointName x SampleDate": {
-                "note": "This table lists any fish species that were loaded with zero counts.  This table exposes `No Fish` records.  Check any valid ScientificName with zero counts",
+                "note": (
+                    "This table lists any fish species that were loaded with zero counts. "
+                    "This table exposes `No Fish` records. "
+                    "Check any valid ScientificName with zero counts"
+                ),
                 "table": "FishAdultCatch",
                 "group_by": [
                     "SampleDate",
@@ -145,7 +156,10 @@ class FishQAReportConfig(BaseQAReportConfig):
                 "skip_missmatch": True,
             },
             "LengthWeight (field-measures): Total Length summary per species": {
-                "note": "Zero records with TotalLength nan (not a number) are expected for species for forked tails (see  Fork-Length table below)",
+                "note": (
+                    "Zero records with TotalLength nan (not a number) are expected "
+                    "for species with forked tails (see Fork-Length table below)"
+                ),
                 "table": "FishLengthWeight",
                 "group_by": ["ScientificName"],
                 "summary": {
@@ -153,7 +167,10 @@ class FishQAReportConfig(BaseQAReportConfig):
                 },
             },
             "LengthWeight (field-measures): Fork Length summary per species": {
-                "note": "Zero records with ForkLength nan (not a number) are expected for species for rounded tails (see  Total-Length table above)",
+                "note": (
+                    "Zero records with ForkLength nan (not a number) are expected "
+                    "for species with rounded tails (see Total-Length table above)"
+                ),
                 "table": "FishLengthWeight",
                 "group_by": ["ScientificName"],
                 "summary": {
@@ -200,7 +217,11 @@ class FishQAReportConfig(BaseQAReportConfig):
     plot_definitions: dict[str, dict[str, Any]] = field(
         default_factory=lambda: {
             "Species Catch Composition - Individual Replicate Samples": {
-                "note": "Guidance: The dots are individual replicate counts for any dates.  This will expose outliers in individual replicates that may not be obvious once replicates are combined. (Limited to most abundant 15 species per plot)",
+                "note": (
+                    "Guidance: The dots are individual replicate counts for any dates. "
+                    "This will expose outliers in individual replicates that may not be obvious "
+                    "once replicates are combined. (Limited to most abundant 15 species per plot)"
+                ),
                 "type": "scatter",
                 "table": "FishAdultCatch",
                 "group_by": ["SamplePointName", "SampleType"],
@@ -212,7 +233,12 @@ class FishQAReportConfig(BaseQAReportConfig):
                 "y_axis_title": False,
             },
             "Distribution of species among sites": {
-                "note": "Guidance: Shows SamplePoints where each species was caught from the most abundant site to the least abundant site pooling all gear types. This may expose transcription errors in assigning counts to sites if memorable tallies are not present or sites that are known to support a particular species are not shown.",
+                "note": (
+                    "Guidance: Shows SamplePoints where each species was caught from the most "
+                    "abundant site to the least abundant site pooling all gear types. This may "
+                    "expose transcription errors in assigning counts to sites if memorable tallies "
+                    "are not present or sites that are known to support a particular species are not shown."
+                ),
                 "type": "scatter",
                 "table": "FishAdultCatch",
                 "group_by": ["ScientificName"],

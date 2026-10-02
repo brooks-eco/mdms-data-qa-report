@@ -28,6 +28,10 @@ def normalize_dataframe(df, filter_date, start, end, data_name=None):
     if "Group" in df.columns and "GroupName" not in df.columns:
         df = df.rename(columns={"Group": "GroupName"})
 
+    string_columns = df.select_dtypes(include=["object", "string"]).columns
+    for column in string_columns:
+        df[column] = df[column].mask(df[column].eq(""), pd.NA)
+
     date_col = next(
         (c for c in ("SampleDate", "DateFirstDayOfQuarter", "date") if c in df.columns), None
     )

@@ -7,7 +7,9 @@ from config import BaseQAReportConfig
 @dataclass
 class VegQAReportConfig(BaseQAReportConfig):
     """
-    Configuration class for the Vegetation QA Report. This class holds all the configuration settings for the report, including file paths, sheet names, column names, join definitions, summary definitions, and plot definitions. This allows us to easily manage and update the configuration settings in one place without changing the code structure of the report generation.
+    Configuration class for the Vegetation QA Report. Holds all configuration settings
+    including file paths, sheet names, column names, join definitions, summary definitions,
+    and plot definitions to allow easy management without changing the report generation code structure.
     """
 
     # --- Configuration ---
@@ -18,9 +20,10 @@ class VegQAReportConfig(BaseQAReportConfig):
                 "date": "1 Oct 2026",
                 "changes": [
                     "Check for Sampling Units that are missing Quarterly Inundation with/without CEW",
-                    "ScientificName sorted by mean percent cover (descending) across all provided samples - easier check for common/rare taxa",
-                    "Check for missing NO PLANTS records. A percent cover record should exist for all monitored sampling units x date.  Use `NO PLANTS` with PercentCover = 0 not blanks or missing rows",
-                    "Tabulate taxa with ZERO percent cover (cover = 0). Should be empty.  Also checking for taxa with 100 cover",
+                    "ScientificName sorted by mean percent cover (descending) across all provided samples - easier check for common/rare taxa",  # noqa: E501
+                    "Check for missing NO PLANTS records. A percent cover record should exist for all "
+                    "monitored sampling units x date. Use `NO PLANTS` with PercentCover = 0 not blanks or missing rows",
+                    "Tabulate taxa with ZERO percent cover (cover = 0). Should be empty. Also checking for taxa with 100 cover",
                 ],
             },
             {
@@ -32,7 +35,7 @@ class VegQAReportConfig(BaseQAReportConfig):
 
     mdms_reports = {
         # table_name: report_API_shortcode
-        "VegCommunitySurvey": "veg-community-structure-qa",
+        "VegCommunitySurvey": "qa-veg-community-structure",
         "VegSpeciesAbundance": "veg-species-abundance",
         "VegRecruitment": "veg-recruitment",
         "VegInundationHistory": "veg-quarterly-inundation",
@@ -138,6 +141,7 @@ class VegQAReportConfig(BaseQAReportConfig):
                 "summary": {
                     "WaterDepth": ["min", "mean", "max"],
                 },
+                "mark_no_data": False
             },
             "Duration Dry per transect/plot x SampleDate": {
                 "table": "VegCommunitySurvey",
@@ -152,7 +156,10 @@ class VegQAReportConfig(BaseQAReportConfig):
                 "summary": {"QuadratPlotID": "count", "SoilMoisture": "count"},
             },
             "Sum of non-plant ground-cover metrics per SamplingUnitID x SampleDate": {
-                "note": "sum of [LitterCover, LichenMossesCover, BareGroundCover, DeadTreeCover, LogCover, PlantBases]. Look for outliers or excessive percent cover > 100",
+                "note": (
+                    "sum of [LitterCover, LichenMossesCover, BareGroundCover, DeadTreeCover, LogCover, PlantBases]. "
+                    "Look for outliers or excessive percent cover > 100"
+                ),
                 "table": "VegCommunitySurvey",
                 "group_by": ["SamplingUnitID", "SampleDate"],
                 "sum_columns": [
@@ -174,28 +181,45 @@ class VegQAReportConfig(BaseQAReportConfig):
                 "sort": [["PercentCover", "mean", "desc"]],
             },
             "Taxa with ZERO percent cover per SamplingUnitID x SampleDate": {
-                "note": "This table lists any plant species recorded with zero percent cover. Rows may include `No Plants` records. Rows that are not `No Plants` may indicate errors. Investigate any zero count records",
+                "note": (
+                    "This table lists any plant species recorded with zero percent cover. "
+                    "Rows may include `No Plants` records. Rows that are not `No Plants` may indicate errors. "
+                    "Investigate any zero count records"
+                ),
                 "table": "VegSpeciesAbundance",
                 "group_by": ["SamplingUnitID", "SampleDate", "ScientificName"],
                 "summary": {"PercentCover": ["sum"]},
                 "filter": {"PercentCover": {"==": 0}},
             },
             "Taxa with 100 percent cover per SamplingUnitID x SampleDate": {
-                "note": "This table lists any plant species that were loaded with >=100 percent cover  - may include NO PLANTS.  Check values > 100",
+                "note": (
+                    "This table lists any plant species that were loaded with >=100 percent cover "
+                    "- may include NO PLANTS. Check values > 100"
+                ),
                 "table": "VegSpeciesAbundance",
                 "group_by": ["SamplingUnitID", "SampleDate", "ScientificName"],
                 "summary": {"PercentCover": ["sum"]},
                 "filter": {"PercentCover": {">=": 100}},
             },
             "Total sum of percent cover of plants per SamplingUnitID x SampleDate": {
-                "note": "Sorted high to low. Look for outliers or excessive percent cover > 100. Consistently small sum may indicate data loaded as proportion (0-1) not percent (0-100) ",
+                "note": (
+                    "Sorted high to low. Look for outliers or excessive percent cover > 100. "
+                    "Consistently small sum may indicate data loaded as proportion (0-1) not percent (0-100)"
+                ),
                 "table": "VegSpeciesAbundance",
                 "group_by": ["SamplingUnitID", "SampleDate"],
                 "summary": {"PercentCover": ["sum", "min", "max"]},
                 "sort": [["PercentCover", "sum", "desc"]],
             },
             "Alert: Survey efforts with no vegetation abundance records": {
-                "note": "There should be no data here unless the Community Survey was explicitly done without recording ground cover. Any displayed rows indicate a survey effort (SamplingUnitID x SampleDate) that has no matching `Vegetation Species Abundance` ground cover data. If no plants were found there should be a single `No Plants` entry for the sample with percent_cover = 0. If no Community or Abundance sampling was done (e.g. no site access) remove the Veg Survey Effort record.",
+                "note": (
+                    "There should be no data here unless the Community Survey was explicitly done "
+                    "without recording ground cover. Any displayed rows indicate a survey effort "
+                    "(SamplingUnitID x SampleDate) that has no matching `Vegetation Species Abundance` "
+                    "ground cover data. If no plants were found there should be a single `No Plants` "
+                    "entry for the sample with percent_cover = 0. If no Community or Abundance sampling "
+                    "was done (e.g. no site access) remove the Veg Survey Effort record."
+                ),
                 "table": "VegCommunitySurvey",
                 "group_by": ["SamplingUnitID", "SampleDate"],
                 "summary": {"SpeciesRecordCount": ["sum"]},
@@ -238,14 +262,18 @@ class VegQAReportConfig(BaseQAReportConfig):
             #     },
             # },
             "VegInundationHistory completeness check. Sampling Units with < 4 records of quarterly inundation": {
-                "note": "This table should be empty. Any records displayed are Veg Sampling Units that were monitored (the effort record exists) but there are < 4 quarterly `Veg Inundation History` records for the SamplingUnitID.",
+                "note": (
+                    "This table should be empty. Any records displayed are Veg Sampling Units that "
+                    "were monitored (the effort record exists) but there are < 4 quarterly "
+                    "`Veg Inundation History` records for the SamplingUnitID."
+                ),
                 "table": "VegCommunitySurvey",
                 "group_by": ["SamplePointName", "SamplingUnitID"],
                 "summary": {
                     "InundationRecordCount": "min",
                 },
                 "filter": {"InundationRecordCount": {"<": 4}},
-            }
+            },
         }
     )
 
@@ -253,7 +281,14 @@ class VegQAReportConfig(BaseQAReportConfig):
     plot_definitions: dict[str, dict[str, Any]] = field(
         default_factory=lambda: {
             "Species Composition - Individual Replicate Sample Dates": {
-                "note": "Guidance: The dots are individual sampling dates in the water-year. For slow growing taxa you might expect to see dots close together because cover does not change a lot during the year - unless there is a recruitment event.  The x axis shows the range of vegetation cover for species in that SamplingUnit - check that this matches your expectation and investigate unexpectedly high and low values. (Limited to showing the most abundant 15 species per Sampling Unit)",
+                "note": (
+                    "Guidance: The dots are individual sampling dates in the water-year. For slow growing "
+                    "taxa you might expect to see dots close together because cover does not change a lot "
+                    "during the year - unless there is a recruitment event. The x axis shows the range of "
+                    "vegetation cover for species in that SamplingUnit - check that this matches your "
+                    "expectation and investigate unexpectedly high and low values. "
+                    "(Limited to showing the most abundant 15 species per Sampling Unit)"
+                ),
                 "type": "scatter",
                 "table": "VegSpeciesAbundance",
                 "group_by": ["SamplePointName", "SamplingUnitID"],

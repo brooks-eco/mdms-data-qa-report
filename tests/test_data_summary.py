@@ -2,10 +2,17 @@ from __future__ import annotations
 
 from copy import deepcopy
 
+import numpy as np
 import pandas as pd
 import pytest
 
-from data_summary import SummaryInputError, generate_effort_summaries, validate_summary_inputs
+from data_summary import (
+    SummaryInputError,
+    apply_no_data_markup,
+    generate_effort_summaries,
+    qa_outliers,
+    validate_summary_inputs,
+)
 
 
 def test_validate_summary_inputs_reports_all_missing_tables_and_columns() -> None:
@@ -127,3 +134,97 @@ def test_validate_summary_inputs_uses_only_configured_columns_for_fish_tables():
     }
 
     validate_summary_inputs(tables, definitions)
+
+
+def test_qa_outliers_defaults_to_iqr_detection() -> None:
+    summary = pd.DataFrame({"value": [1, 2, 2, 2, 1000]})
+
+    qa_outliers("value", summary)
+
+    qa_column = "QA Check\nvalue\noutliers IQR\n[2.0, 2.0]"
+    assert summary[qa_column].tolist() == ["low value", "\u2713", "\u2713", "\u2713", "high value"]
+
+
+def test_qa_outliers_uses_explicit_skewed_detection() -> None:
+    summary = pd.DataFrame({"value": [1, 2, 2, 2, 1000]})
+
+    qa_outliers("value", summary, method="skewed")
+
+    qa_column = "QA Check\nvalue\noutliers skewed\n[2.0, 2.0]"
+    assert summary[qa_column].tolist() == ["low value", "\u2713", "\u2713", "\u2713", "high value"]
+
+
+def test_iqr_outliers_use_skewness_adjusted_boxplot_fences() -> None:
+    summary = pd.DataFrame({"value": [1, 2, 2, 2, 3, 3, 4, 5, 20, 100]})
+
+    qa_outliers("value", summary, method="iqr", mark_no_data=False)
+
+    qa_column = "QA Check\nvalue\noutliers IQR\n[0.9, 16.0]"
+    assert summary[qa_column].tolist() == [
+        "\u2713",
+        "\u2713",
+        "\u2713",
+        "\u2713",
+        "\u2713",
+        "\u2713",
+        "\u2713",
+        "\u2713",
+        "high value",
+        "high value",
+    ]
+
+
+def test_skewed_outlier_header_reports_raw_value_bounds() -> None:
+    summary = pd.DataFrame({"value": [1.0, np.e, np.e**2, np.e**3, np.e**4]})
+
+    qa_outliers("value", summary, method="skewed", alpha=0.05)
+
+    qa_column = "QA Check\nvalue\noutliers skewed\n[0.2, 336.6]"
+    assert summary[qa_column].tolist() == ["\u2713"] * 5
+
+
+def test_qa_outliers_rejects_unknown_detection_method() -> None:
+    summary = pd.DataFrame({"value": [1, 2, 3]})
+
+    with pytest.raises(ValueError, match="Unknown outlier detection method 'unknown'"):
+        qa_outliers("value", summary, method="unknown")
+
+
+def test_apply_no_data_markup_marks_zero_and_missing_values() -> None:
+    summary = pd.DataFrame(
+        {
+            "value": [0.0, float("nan"), 2.0],
+            "QA Check": ["low value", "", "\u2713"],
+        }
+    )
+
+    apply_no_data_markup(summary, "value", "QA Check")
+
+    assert summary["QA Check"].tolist() == ["no data", "no data", "\u2713"]
+
+
+def test_qa_outliers_marks_zero_as_no_data_by_default() -> None:
+    summary = pd.DataFrame({"value": [0, 1, 2, 3]})
+
+    qa_outliers("value", summary)
+
+    qa_column = "QA Check\nvalue\noutliers IQR\n[-1.5, 4.5]"
+    assert summary.loc[0, qa_column] == "no data"
+
+
+def test_qa_outliers_applies_no_data_markup_after_skewed_detection() -> None:
+    summary = pd.DataFrame({"value": [float("nan"), 0, 1, 2, 2, 2, 1000]})
+
+    qa_outliers("value", summary, method="skewed")
+
+    qa_column = "QA Check\nvalue\noutliers skewed\n[2.0, 2.0]"
+    assert summary.loc[[0, 1], qa_column].tolist() == ["no data", "no data"]
+
+
+def test_qa_outliers_can_leave_missing_and_zero_values_for_outlier_detection() -> None:
+    summary = pd.DataFrame({"value": [float("nan"), 0, 1, 2, 3]})
+
+    qa_outliers("value", summary, method="iqr", mark_no_data=False)
+
+    qa_column = next(column for column in summary.columns if "outliers IQR" in column)
+    assert summary.loc[[0, 1], qa_column].tolist() == ["", "\u2713"]

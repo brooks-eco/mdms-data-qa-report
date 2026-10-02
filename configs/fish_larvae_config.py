@@ -7,7 +7,9 @@ from config import BaseQAReportConfig
 @dataclass
 class FishLarvaeQAReportConfig(BaseQAReportConfig):
     """
-    Configuration class for the Fish Larvae QA Report. This class holds all the configuration settings for the report, including file paths, sheet names, column names, join definitions, summary definitions, and plot definitions. This allows us to easily manage and update the configuration settings in one place without changing the code structure of the report generation.
+    Configuration class for the Fish Larvae QA Report. Holds all configuration settings
+    including file paths, sheet names, column names, join definitions, summary definitions,
+    and plot definitions to allow easy management without changing the report generation code structure.
     """
 
     # --- Configuration ---
@@ -17,7 +19,8 @@ class FishLarvaeQAReportConfig(BaseQAReportConfig):
             {
                 "date": "29 Sept 2026",
                 "changes": [
-                    "Check there is a count record for every sample.  Use `No Fish` with count 0 not blanks or missing rows",
+                    "Check there is a count record for every sample. "
+                    "Use `No Fish` with count 0 not blanks or missing rows",
                     "Check zero count samples use pseudo-taxon NO FISH",
                 ],
             },
@@ -66,14 +69,20 @@ class FishLarvaeQAReportConfig(BaseQAReportConfig):
     data_summary_definitions: dict[str, dict[str, Any]] = field(
         default_factory=lambda: {
             "Drift Net and Trawls - effort: unique sample id's (sample number) and count for each site": {
-                "note": "look for outliers. Uneven sample counts or mismatched id counts may indicate missing data for some replicates.",
+                "note": (
+                    "Look for outliers. Uneven sample counts or mismatched id counts "
+                    "may indicate missing data for some replicates."
+                ),
                 "table": "LarvaeSurveyEffort",
                 "group_by": ["SampleType", "SamplePointName", "SampleDate"],
                 "summary": {"SampleNumber": ["nunique", "count"]},
                 "filter": {"SampleType": {"==": "DriftNet"}},
             },
             "Drift Net and Trawls - effort: sample duration": {
-                "note": "Durations will vary but should be similar among gear types.  Check sample pooled indicator is correct.",
+                "note": (
+                    "Durations will vary but should be similar among gear types. "
+                    "Check sample pooled indicator is correct."
+                ),
                 "table": "LarvaeSurveyEffort",
                 "group_by": ["SampleType", "SamplePointName", "SampleDate", "SampleNumber"],
                 "summary": {
@@ -90,7 +99,10 @@ class FishLarvaeQAReportConfig(BaseQAReportConfig):
                 "filter": {"SampleType": {"==": "DriftNet"}},
             },
             "Light Traps: unique sample id's (sample number) and count for each site": {
-                "note": "look for outliers. Uneven sample counts or mismatched id counts may indicate missing data for some replicates. Light Trap replicates are often pooled into a single sample.",
+                "note": (
+                    "Look for outliers. Uneven sample counts or mismatched id counts may indicate "
+                    "missing data for some replicates. Light Trap replicates are often pooled into a single sample."
+                ),
                 "table": "LarvaeSurveyEffort",
                 "group_by": ["SampleType", "SamplePointName", "SampleDate", "Pooled"],
                 "summary": {
@@ -99,7 +111,10 @@ class FishLarvaeQAReportConfig(BaseQAReportConfig):
                 "filter": {"SampleType": {"!=": "DriftNet"}},
             },
             "Light Traps - effort: duration per sample": {
-                "note": "Durations will vary but should be similar among gear types.  Check sample pooled or not indicator is correct.",
+                "note": (
+                    "Durations will vary but should be similar among gear types. "
+                    "Check sample pooled or not indicator is correct."
+                ),
                 "table": "LarvaeSurveyEffort",
                 "group_by": ["SampleType", "SamplePointName", "SampleDate", "SampleNumber"],
                 "summary": {
@@ -116,14 +131,22 @@ class FishLarvaeQAReportConfig(BaseQAReportConfig):
                 "filter": {"SampleType": {"==": "LightTrap"}},
             },
             "Alert: Survey efforts with no catch data": {
-                "note": "There should be no data here. Any displayed rows are survey effort samples that have no matching catch data. If no fish larvae were found there should be a single `No Fish` entry for the sample with count = 0. If the sample was not collected remove the Larvae Survey Effort record.",
+                "note": (
+                    "There should be no data here. Any displayed rows are survey effort samples "
+                    "that have no matching catch data. If no fish larvae were found there should be "
+                    "a single `No Fish` entry for the sample with count = 0. If the sample was not "
+                    "collected remove the Larvae Survey Effort record."
+                ),
                 "table": "LarvaeSurveyEffort",
                 "group_by": ["SampleType", "SamplePointName", "SampleDate", "SampleNumber"],
                 "summary": {"CatchRecordCount": ["sum"]},
                 "filter": {"CatchRecordCount": {"==": 0}},
             },
             "Alert: Check Zero count ScientificName uses pseudo-taxon `No Fish`": {
-                "note": "This table only lists taxa with count = 0. Rows may include `No Fish` records. Rows that are not `No Fish` may indicate errors.",
+                "note": (
+                    "This table only lists taxa with count = 0. Rows may include `No Fish` records. "
+                    "Rows that are not `No Fish` may indicate errors."
+                ),
                 "table": "FishLarvaeCounts",
                 "group_by": [
                     "SampleType",
@@ -156,7 +179,11 @@ class FishLarvaeQAReportConfig(BaseQAReportConfig):
     plot_definitions: dict[str, dict[str, Any]] = field(
         default_factory=lambda: {
             "Species Catch Composition - Individual Replicate Samples": {
-                "note": "Guidance: The dots are individual replicate counts for any dates.  This will expose outliers in individual replicates that may not be obvious once replicates are combined. Look for higher or lower than expected counts for each species.",
+                "note": (
+                    "Guidance: The dots are individual replicate counts for any dates. "
+                    "This will expose outliers in individual replicates that may not be obvious "
+                    "once replicates are combined. Look for higher or lower than expected counts for each species."
+                ),
                 "type": "scatter",
                 "table": "FishLarvaeCounts",
                 "group_by": ["SamplePointName", "SampleType"],
