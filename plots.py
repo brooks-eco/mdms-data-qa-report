@@ -109,6 +109,11 @@ def create_single_scatter_plot(
         y_values = df[y_col].map(y_positions) if y_positions is not None else df[y_col]
         ax.scatter(x_values, y_values, alpha=0.8)
 
+    if is_numeric_dtype(df[x_col]):
+        ax.set_xlim(xmin=x_values.max()/-20, xmax=x_values.max()*1.05)
+    if is_numeric_dtype(df[y_col]):
+        ax.set_ylim(ymin=y_values.max()/-20, ymax=y_values.max()*1.05)
+
     if x_categories is not None:
         ax.set_xticks(range(len(x_categories)), labels=[str(category) for category in x_categories])
     if y_categories is not None:
@@ -198,7 +203,7 @@ def create_plots(joined_dfs, data_summaries, plots_definition, output_path):
             continue
 
         for group_key, group_df in groups:
-            figure_size = (4, 3) if len(groups) > 4 else (6, 4)
+            figure_size = (4, 3) if len(groups) > 4 else (6, 5)
             figure, axis = plt.subplots(figsize=figure_size)
             group_key_tuple = group_key if isinstance(group_key, tuple) else (group_key,)
 
@@ -232,7 +237,7 @@ def create_plots(joined_dfs, data_summaries, plots_definition, output_path):
                     color_map=color_map,
                 )
             elif plot_type == "scatter":
-                plotted = _prepare_scatter_data(group_df, config)
+                plotted = prepare_scatter_data(group_df, config)
                 if plotted is None:
                     logger.debug("No data to plot for '%s'.", title)
                     plt.close(figure)
@@ -265,7 +270,8 @@ def create_plots(joined_dfs, data_summaries, plots_definition, output_path):
     return plot_collection
 
 
-def _prepare_scatter_data(group_df, config, y_limit=15):
+def prepare_scatter_data(group_df, config, y_limit=15):
+    """Prepare scatter data, retaining raw rows for the highest-mean Y categories."""
     x_column = config.get("x")
     y_column = config.get("y")
     color_column = config.get("color")
@@ -276,9 +282,8 @@ def _prepare_scatter_data(group_df, config, y_limit=15):
     for column in (x_column, y_column):
         if "date" not in str(column).lower() or is_datetime64_any_dtype(dataframe[column]):
             continue
-        parsed_dates = pd.to_datetime(dataframe[column], errors="coerce")
-        supplied_values = dataframe[column].notna()
-        if parsed_dates.loc[supplied_values].notna().all():
+        parsed_dates = pd.to_datetime(dataframe[column], errors="coerce", format="mixed")
+        if parsed_dates[dataframe[column].notna()].notna().all():
             dataframe[column] = parsed_dates
 
     x_is_numeric = is_numeric_dtype(dataframe[x_column])
@@ -288,51 +293,54 @@ def _prepare_scatter_data(group_df, config, y_limit=15):
 
     aggregate_function = config.get("aggregate_function")
     selected_y_values = None
+
     if aggregate_function:
         if x_is_numeric and not y_is_numeric:
-            aggregate_columns = [y_column]
-            if color_column and color_column in dataframe.columns and color_column != y_column:
-                aggregate_columns.append(color_column)
-            dataframe = dataframe.groupby(aggregate_columns, as_index=False)[x_column].agg(
+            agg_cols = [y_column] + (
+                [color_column]
+                if color_column and color_column in dataframe.columns and color_column != y_column
+                else []
+            )
+            dataframe = dataframe.groupby(agg_cols, as_index=False)[x_column].agg(
                 aggregate_function
             )
         elif y_is_numeric and not x_is_numeric:
-            aggregate_columns = [x_column]
-            if color_column and color_column in dataframe.columns and color_column != x_column:
-                aggregate_columns.append(color_column)
-            dataframe = dataframe.groupby(aggregate_columns, as_index=False)[y_column].agg(
+            agg_cols = [x_column] + (
+                [color_column]
+                if color_column and color_column in dataframe.columns and color_column != x_column
+                else []
+            )
+            dataframe = dataframe.groupby(agg_cols, as_index=False)[y_column].agg(
                 aggregate_function
             )
     elif x_is_numeric and not y_is_numeric and not y_is_datetime:
-        mean_by_y_value = dataframe.groupby(y_column)[x_column].mean()
-        selected_y_values = mean_by_y_value.nlargest(y_limit).index
+        mean_by_y = dataframe.groupby(y_column)[x_column].mean()
+        selected_y_values = mean_by_y.nlargest(y_limit).index
         dataframe = dataframe[dataframe[y_column].isin(selected_y_values)]
 
     if not x_is_numeric and not x_is_datetime:
         dataframe[x_column] = dataframe[x_column].astype(str).str[:25]
-        if y_is_numeric:
-            dataframe = dataframe.sort_values(by=y_column).tail(y_limit)
-        else:
-            dataframe = dataframe.sort_values(by=x_column)
+        dataframe = (
+            dataframe.sort_values(by=y_column).tail(y_limit)
+            if y_is_numeric
+            else dataframe.sort_values(by=x_column)
+        )
 
     if not y_is_numeric and not y_is_datetime:
         if selected_y_values is not None:
-            bottom_to_top = {
-                value: position for position, value in enumerate(reversed(selected_y_values))
-            }
+            order = {v: i for i, v in enumerate(reversed(selected_y_values))}
             dataframe = dataframe.sort_values(
-                by=y_column,
-                key=lambda values: values.map(bottom_to_top),
-                kind="stable",
+                by=y_column, key=lambda s: s.map(order), kind="stable"
             )
         dataframe[y_column] = dataframe[y_column].astype(str).str[:25]
         if x_is_numeric:
-            if aggregate_function:
-                dataframe = dataframe.sort_values(by=x_column).tail(y_limit)
-            elif selected_y_values is None:
-                dataframe = dataframe.sort_values(by=x_column)
-        elif x_is_datetime:
-            dataframe = dataframe.sort_values(by=y_column)
+            dataframe = (
+                dataframe.sort_values(by=x_column).tail(y_limit)
+                if aggregate_function
+                else (
+                    dataframe.sort_values(by=x_column) if selected_y_values is None else dataframe
+                )
+            )
         else:
             dataframe = dataframe.sort_values(by=y_column)
 
@@ -345,8 +353,3 @@ def _prepare_scatter_data(group_df, config, y_limit=15):
         dataframe = dataframe.sort_values(by=y_column, kind="stable")
 
     return dataframe
-
-
-def prepare_scatter_data(group_df, config, y_limit=15):
-    """Prepare scatter data, retaining raw rows for the highest-mean Y categories."""
-    return _prepare_scatter_data(group_df, config, y_limit=y_limit)

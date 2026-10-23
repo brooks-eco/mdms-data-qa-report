@@ -170,7 +170,7 @@ class PDFQAReport:
     Handles the generation of the PDF QA Report using ReportLab.
     """
 
-    def __init__(self, output_path, group_name, group_long_name, report_title_str):
+    def __init__(self, output_path, group_name, group_long_name, report_title_str, water_year):
         """
         Initializes the PDF report generator.
 
@@ -185,8 +185,9 @@ class PDFQAReport:
         self.report_title_str = report_title_str
         # get date-time stamp to include in filename
         date_stamp = datetime.datetime.now(tz=datetime.UTC).astimezone().strftime("%Y%m%d")
-        self.filename = self._make_safe(f"{group_name}_{report_title_str}_{date_stamp}.pdf")
+        self.filename = self._make_safe(f"{group_name}_{report_title_str}_{water_year}_{date_stamp}.pdf")
         self.pdf_report_path = output_path / self.filename
+        self.water_year = water_year
 
         self.doc = SimpleDocTemplate(
             str(self.pdf_report_path),
@@ -374,7 +375,7 @@ class PDFQAReport:
         )
         self.elements.append(intro)
 
-        self.elements.append(Spacer(1, 9))
+        self.elements.append(Spacer(1, 8))
 
         self.elements.append(Paragraph("Action Required", self.styles["Heading2"]))
         actions_required = [
@@ -413,7 +414,7 @@ class PDFQAReport:
             )
         )
         self.elements.append(actions_table)
-        self.elements.append(Spacer(1, 9))
+        self.elements.append(Spacer(1, 8))
 
         # if data_url:
         #     self.elements.append(Spacer(1, 9))
@@ -423,21 +424,20 @@ class PDFQAReport:
         #             self.normal_style,
         #         )
         #     )
-        self.elements.append(Spacer(1, 9))
 
     def _add_change_log(self, change_log):
         """
         Adds a changelog table to the report, showing version history and changes.
         """
         self.elements.append(Paragraph("Recent Changes", self.styles["Heading2"]))
-        self.elements.append(
-            Paragraph(
-                "New QA tests and data summaries may have been added since your last data review",
-                self.normal_style,
-            )
-        )
+        # self.elements.append(
+        #     Paragraph(
+        #         "New QA tests and data summaries may have been added since your last data review",
+        #         self.normal_style,
+        #     )
+        # )
         changelog_data = build_change_log_table_data(change_log)
-        changelog_table = Table(changelog_data, colWidths=[3.5 * cm, None])
+        changelog_table = Table(changelog_data, colWidths=[3.1 * cm, None])
         changelog_table.setStyle(
             TableStyle(
                 [

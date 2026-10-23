@@ -9,7 +9,7 @@ class MarkdownQAReport:
     Handles the generation of the Markdown QA Report.
     """
 
-    def __init__(self, output_path, group_name, report_title_str):
+    def __init__(self, output_path, group_name, report_title_str, water_year):
         """
         Initializes the Markdown report generator.
 
@@ -22,7 +22,7 @@ class MarkdownQAReport:
         self.group_name = group_name
         self.report_title_str = report_title_str
         date_stamp = datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Y%m%d")
-        self.filename = self._make_safe(f"{group_name}_{report_title_str}_{date_stamp}.md")
+        self.filename = self._make_safe(f"{group_name}_{report_title_str}_{water_year}_{date_stamp}.md")
         self.report_path = output_path / self.filename
         self.content = ""
 

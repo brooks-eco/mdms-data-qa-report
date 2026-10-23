@@ -89,6 +89,14 @@ class FishQAReportConfig(BaseQAReportConfig):
 
     data_summary_definitions: dict[str, dict[str, Any]] = field(
         default_factory=lambda: {
+            "Effort: Number of sampling events per site": {
+                "table": "FishSurveyEffort",
+                "group_by": [
+                    "SampleType",
+                    "SamplePointName",
+                ],
+                "summary": {"SampleDate": "nunique"},
+            },
             "Effort: Number of samples per site, date, and type": {
                 "table": "FishSurveyEffort",
                 "group_by": [
@@ -97,14 +105,6 @@ class FishQAReportConfig(BaseQAReportConfig):
                     "SampleDate",
                 ],
                 "summary": {"SampleNumber": "nunique", "SampleDurationSec": "sum"},
-            },
-            "Effort: Number of sampling events per site": {
-                "table": "FishSurveyEffort",
-                "group_by": [
-                    "SampleType",
-                    "SamplePointName",
-                ],
-                "summary": {"SampleDate": "nunique"},
             },
             "Alert: Survey efforts with no FishAdultCatch species catch data": {
                 "note": (
@@ -126,8 +126,8 @@ class FishQAReportConfig(BaseQAReportConfig):
             "Species with ZERO count in a Sample x SamplePointName x SampleDate": {
                 "note": (
                     "This table lists any fish species that were loaded with zero counts. "
-                    "This table exposes `No Fish` records. "
-                    "Check any valid ScientificName with zero counts"
+                    "This table will show all the `No Fish` records. "
+                    "If there are other valid ScientificName with zero counts shown check they are not mistakes."
                 ),
                 "table": "FishAdultCatch",
                 "group_by": [
@@ -155,27 +155,37 @@ class FishQAReportConfig(BaseQAReportConfig):
                 },
                 "skip_missmatch": True,
             },
+            "LengthWeight (field-measures): Count of ForkLength, TotalLength and Weight records per Species": {
+                "note": (
+                    "Check for species with rounded tails that have ForkLengths and  species with forked tails that have TotalLengths recorded. Do you have the expected number of Weights and Lengths for each species?"
+                ),
+                "table": "FishLengthWeight",
+                "group_by": ["ScientificName"],
+                "summary": {"TotalLength": "count", "ForkLength": "count", "Weight": "count"},
+                "sort": [["TotalLength", "count", "desc"],["ForkLength", "count", "desc"]],
+                "skip_missmatch": True,
+            },
             "LengthWeight (field-measures): Total Length summary per species": {
                 "note": (
-                    "Zero records with TotalLength nan (not a number) are expected "
-                    "for species with forked tails (see Fork-Length table below)"
+                    "These should be species with rounded tails. Check ranges of values are as you expect."
                 ),
                 "table": "FishLengthWeight",
                 "group_by": ["ScientificName"],
                 "summary": {
                     "TotalLength": ["count", "min", "mean", "max"],
                 },
+                "filter": {"TotalLength": {">": 0}},
             },
             "LengthWeight (field-measures): Fork Length summary per species": {
                 "note": (
-                    "Zero records with ForkLength nan (not a number) are expected "
-                    "for species with rounded tails (see Total-Length table above)"
+                    "These should be species with forked tails. Check ranges of values are as you expect."
                 ),
                 "table": "FishLengthWeight",
                 "group_by": ["ScientificName"],
                 "summary": {
                     "ForkLength": ["count", "min", "mean", "max"],
                 },
+                "filter": {"ForkLength": {">": 0}},
             },
             "LengthWeight (Field-measures): Weights summary per species": {
                 "table": "FishLengthWeight",
@@ -208,7 +218,10 @@ class FishQAReportConfig(BaseQAReportConfig):
                     "TotalLength": "count",
                     "ForkLength": "count",
                     "Weight": "count",
+                    "AgeAdult": "count",
+                    "AgeLarvae": "count",
                 },
+                "skip_missmatch": True,
             },
         }
     )

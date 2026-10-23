@@ -198,6 +198,7 @@ class WaterbirdQAReportConfig(BaseQAReportConfig):
                 "y": "ScientificName",
                 "color": "ScientificName",
                 "Legend": False,
+                "y_axis_title": False,
                 # "aggregate_function": "mean",  # may also want min, max, count
             },
             "Summary of 'InundatedArea' and eWaterTiming for each site survey": {

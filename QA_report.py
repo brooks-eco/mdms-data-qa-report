@@ -28,6 +28,8 @@ def _write_reports(
     plot_collection,
     data_date,
 ):
+    water_year = f"{config.start_date.year-2000}{config.end_date.year-2000}"
+
     if config.create_markdown_report:
         for summary_name, (_, summary_df) in data_summaries.items():
             output_csv = output_path / f"b_{make_safe(summary_name)}.csv"
@@ -51,7 +53,7 @@ def _write_reports(
             left_justify_columns=getattr(config, "left_justify_columns", None),
         )
 
-    pdf_report = PDFQAReport(output_path, group_name, group_long_name, config.report_title)
+    pdf_report = PDFQAReport(output_path, group_name, group_long_name, config.report_title, water_year)
     pdf_report.create_report(
         data_summaries,
         plot_collection,

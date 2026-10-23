@@ -116,6 +116,12 @@ def generate_effort_summaries(joined_dfs, summaries_config, group_name):
                 for column, functions in summary_funcs.items():
                     if "sum" in functions:
                         summary_funcs[column] = ["min", "max", "mean"]
+                        # if "sum" in sort_specification replace with "mean".  expecting "sort": [["PercentCover", "sum", "desc"]],
+                        sort_specification = [
+                            [col, "mean" if agg == "sum" else agg, direction]
+                            for col, agg, direction in sort_specification
+                        ]
+
 
         summary_df = df.groupby(group_by_cols).agg(summary_funcs).reset_index()
 
@@ -251,7 +257,7 @@ def _apply_qa_checks(summary_df, column_functions, config):
 
         if function == "nunique" and "ScientificName" in column:
             qa_outliers(column, summary_df)
-        if function in {"count", "sum", "mean"}:
+        if function in {"count", "sum", "mean","max"}:
             if not zero_check_done and "ScientificName" in summary_df.columns:
                 zero_check_done = _check_zero_species_count(
                     summary_df, column, original_column, function
@@ -318,7 +324,7 @@ def _check_unique_count(summary_df, column, original_column, function):
 
 def _check_zero_species_count(summary_df, column, original_column, function):
     # if the count, sum or mean is 0 the ScientificName should begin with "no " as in "no plants", "no fish", "no waterbirds"
-    if function not in {"count", "sum", "mean"} or "ScientificName" not in summary_df.columns:
+    if "ScientificName" not in summary_df.columns  or function not in {"count", "sum", "mean"} or column.endswith("records") :
         return False
     qa_column = f"QA Check\n{column}\nzero values\nfor species"
     summary_df[qa_column] = ""
@@ -331,7 +337,7 @@ def _check_zero_species_count(summary_df, column, original_column, function):
     mask = (summary_df[column] > 0) & starts_with_no
     summary_df.loc[mask, qa_column] = (
         "non-zero\n"
-        + original_column
+        + column
         + "\nbut ScientificName is\n'"
         + summary_df.loc[mask, "ScientificName"]
         + "'"
@@ -388,7 +394,7 @@ def qa_outliers(
 def qa_outliers_iqr(column, summary_df):  # noqa: N802
     """Annotate outliers using skewness-adjusted IQR fences."""
     valid_values = pd.to_numeric(summary_df[column], errors="coerce").dropna()
-    if valid_values.empty:
+    if len(valid_values) < 3: #need at least 3 counts to assess outlier
         return None
 
     q1, q3 = np.percentile(valid_values, [25, 75])
@@ -491,105 +497,3 @@ def qa_outliers_skewed(column: str, summary_df: pd.DataFrame, alpha=0.05):
     return qa_column
 
 
-def qa_outliers_test(
-    function,
-    column,
-    summary_df,
-    group_col=None,
-    iqr_mult_high=1.5,
-    iqr_mult_low=1.5,
-    low_percentile=2.5,
-):
-    """
-    Annotate review alerts for numeric summary columns with tunable threshold parameters.
-
-    Parameters:
-    -----------
-    function : str
-        Metric type ('count' vs. continuous like 'mean', 'sum', 'std').
-    column : str
-        Name of the column in summary_df to check for outliers.
-    summary_df : pd.DataFrame
-        DataFrame containing the summary metrics.
-    group_col : str or None, default "ScientificName"
-        Column used for species/group stratification. Set to None to run globally.
-    iqr_mult_high : float, default 1.0
-        Multiplier for Q3 + (iqr_mult_high * IQR) upper bound.
-    iqr_mult_low : float, default 1.5
-        Multiplier for Q1 - (iqr_mult_low * IQR) lower bound (used for continuous metrics).
-    low_percentile : float, default 2.5
-        Percentile cutoff (0-100) applied to non-zero values for count low-bound checks.
-    """
-    s = pd.to_numeric(summary_df[column], errors="coerce")
-
-    # Return early if column contains no valid data
-    if s.dropna().empty:
-        return
-
-    # Check if a species/group column exists for stratified grouping
-    has_group = (
-        group_col is not None
-        and group_col in summary_df.columns
-        and summary_df[group_col].nunique() > 1
-    )
-
-    def flag_sub_series(sub_s):
-        """Processes a single group or full series."""
-        res = pd.Series("\u2713", index=sub_s.index)
-
-        # Filter valid observations according to metric type
-        valid = sub_s[
-            sub_s.notna() & (sub_s > 0 if function in ("count", "nunique", "sum") else True)
-        ]
-        if len(valid) < 3:
-            return res
-
-        q1 = valid.quantile(0.25)
-        q3 = valid.quantile(0.75)
-        iqr = q3 - q1
-
-        # 1. High-value review boundary (tunable upper multiplier)
-        upper_bound = q3 + (iqr_mult_high * iqr)
-        res[sub_s > upper_bound] = f"high {column}"
-
-        # 2. Low-value review boundary
-        if function in ("count", "nunique", "sum"):
-            # For counts: flag non-zero counts at or below low_percentile
-            pos_counts = valid[valid > 0]
-            if len(pos_counts) >= 5 and pos_counts.nunique() > 1:
-                low_cutoff = np.percentile(pos_counts, low_percentile)
-                res[(sub_s > 0) & (sub_s <= low_cutoff) & (sub_s <= upper_bound)] = f"low {column}"
-        else:
-            # For continuous metrics (e.g. mean, std): tunable lower IQR bound
-            lower_bound = q1 - (iqr_mult_low * iqr)
-            res[sub_s < lower_bound] = f"low {column}"
-
-        return res
-
-    # Run grouped analysis if group_col is present; otherwise run globally
-    if has_group:
-        results = pd.Series("\u2713", index=summary_df.index)
-        for _, group in summary_df.groupby(group_col):
-            results.loc[group.index] = flag_sub_series(s.loc[group.index])
-    else:
-        results = flag_sub_series(s)
-
-    # Values excluded from this detector are not assessed as outliers.
-    if function in ("count", "nunique", "sum"):
-        results[s.isna() | (s == 0)] = "not assessed"
-    else:
-        results[s.isna()] = "not assessed"
-
-    # Compute dynamic header bounds for formatting consistency
-    overall_valid = s[s.notna() & (s >= 0 if function in ("count", "nunique", "sum") else True)]
-    q1_o, q3_o = overall_valid.quantile(0.25), overall_valid.quantile(0.75)
-    iqr_o = q3_o - q1_o
-    ub_o = q3_o + (iqr_mult_high * iqr_o)
-    lb_o = (
-        max(0.0, q1_o - (iqr_mult_low * iqr_o))
-        if function == "count"
-        else (q1_o - (iqr_mult_low * iqr_o))
-    )
-
-    qa_column = f"QA Check\n{column}\noutliers IQR\n[{lb_o:.1f}, {ub_o:.1f}]"
-    summary_df[qa_column] = results

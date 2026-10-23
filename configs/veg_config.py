@@ -65,7 +65,7 @@ class VegQAReportConfig(BaseQAReportConfig):
                 "right": "VegSpeciesAbundance",
                 "on": ["SamplingUnitID", "SampleDate"],
                 "how": "left",
-                "summary": {"SpeciesRecordCount": {"PercentCover": "count"}},
+                "summary": {"SpeciesRecordCount": {"ScientificName": "count"},"TotalSpeciesCover": {"PercentCover": "sum"}},
             },
             {
                 "left": "VegSpeciesAbundance",
@@ -141,7 +141,7 @@ class VegQAReportConfig(BaseQAReportConfig):
                 "summary": {
                     "WaterDepth": ["min", "mean", "max"],
                 },
-                "mark_no_data": False
+                "mark_no_data": False,
             },
             "Duration Dry per transect/plot x SampleDate": {
                 "table": "VegCommunitySurvey",
@@ -280,6 +280,21 @@ class VegQAReportConfig(BaseQAReportConfig):
     # plot of multiple pie charts showing species composition (percent cover) by plot and sampling time. This will help identify if there are any plots or sampling times that have unusual species composition that may indicate data quality issues.
     plot_definitions: dict[str, dict[str, Any]] = field(
         default_factory=lambda: {
+            "Timing of veg surveys (SampleDate) and total number of records for each SamplePointName": {
+                "note": (
+                    "Check this matches your field program and there are no surveys out of place or "
+                    "missing (may be hard to see in plots but you can check dates against Table 4 & 5 above). "
+                    "Surveys with zero species represent sampling effort records that have no data (Same as Table 13)"
+
+                ),
+                "type": "scatter",
+                "table": "VegCommunitySurvey",
+                #"group_by": ["SamplePointName","ReplicateNumber"], #dont group
+                "x": "SampleDate",
+                "y": "SpeciesRecordCount",
+                "color": "SamplePointName",
+                "Legend": True,
+            },
             "Species Composition - Individual Replicate Sample Dates": {
                 "note": (
                     "Guidance: The dots are individual sampling dates in the water-year. For slow growing "

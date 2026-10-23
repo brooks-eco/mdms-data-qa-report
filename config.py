@@ -10,7 +10,7 @@ class BaseQAReportConfig:
     # None to produce reports for every GroupName in a global workbook
     # or can limit to just one group e.g. "LAC", MBG"
 
-    testing_group_name: str | tuple[str] = "LAC"  # None for all
+    testing_group_name: str | tuple[str] = "MMY"  # None for all
 
     # -----------------------------------------------------------------
     # workbooks are downloaded from MDMS manually and placed in the workbooks folder
@@ -24,16 +24,18 @@ class BaseQAReportConfig:
     # input_file:str = "Vegetation_20260303135639.xlsx"
     # input_file:str = "Fish_20260316170814.xlsx"
     # input_file: str = "Fish_20260602105327.xlsx"
-    input_file: str = "Vegetation_20260930020958.xlsx"
-    # input_file: str = "vegetation"
-    #input_file: str = "fish"
-    # input_file: str = "fishlarvae"
+    #input_file: str = "Vegetation_20260930020958.xlsx"
+    #input_file: str = "vegetation"
+    input_file: str = "fish"
+    #input_file: str = "fishlarvae"
     # input_file: str = "FishLarvae_20260929165520.xlsx"
-    # input_file: str = "Fish_20260930222835.xlsx"
-    # input_file: str = "waterbirdsurvey_20261001182845.xlsx"
+    #input_file: str = "Fish_20260930222835.xlsx"
+    # input_file: str = "waterbirdsurvey_20261008154832.xlsx"
     #input_file: str = "waterbirdsurvey"
+    #input_file: str = "lignumdrone_20261005150535.xlsx"
+    #input_file: str = "lignumdrone"
 
-    start_date: pd.Timestamp = pd.to_datetime("2025-06-01")
+    start_date: pd.Timestamp = pd.to_datetime("2025-07-01")
     end_date: pd.Timestamp = pd.to_datetime("2026-07-31")
 
     filter_by_date: bool = True
@@ -71,6 +73,7 @@ def get_config(**kwargs) -> BaseQAReportConfig:
     # Import specific configs here to avoid circular dependency
     from configs.fish_config import FishQAReportConfig
     from configs.fish_larvae_config import FishLarvaeQAReportConfig
+    from configs.lignum_drone_config import LignumDroneQAReportConfig
     from configs.veg_config import VegQAReportConfig
     from configs.waterbird_config import WaterbirdQAReportConfig
 
@@ -81,6 +84,7 @@ def get_config(**kwargs) -> BaseQAReportConfig:
         "fish": FishQAReportConfig,
         "waterbirdsurvey": WaterbirdQAReportConfig,
         "fishlarvae": FishLarvaeQAReportConfig,
+        "lignumdrone": LignumDroneQAReportConfig,
     }
 
     for prefix, config_class in config_map.items():

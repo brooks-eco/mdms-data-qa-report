@@ -35,7 +35,7 @@ class FishLarvaeQAReportConfig(BaseQAReportConfig):
 
     mdms_reports = {
         # table_name: report_API_shortcode
-        "LarvaeSurveyEffort": "fish-larvae-effort",
+        "LarvaeSurveyEffort": "qa-fish-larvae-effort",
         "FishLarvaeCounts": "fish-larvae",
     }
 
