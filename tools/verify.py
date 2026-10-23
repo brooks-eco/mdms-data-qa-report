@@ -21,6 +21,7 @@ SKIP_DIRS = {
     "dist",
 }
 
+
 def make_verify_env(project_root: Path) -> tuple[dict[str, str], Path]:
     """Create an isolated temp folder and env for verification subprocesses."""
     tmp_root = project_root / ".tmp"
@@ -39,6 +40,7 @@ def make_verify_env(project_root: Path) -> tuple[dict[str, str], Path]:
     env["TMPDIR"] = str(run_tmp)
 
     return env, run_tmp
+
 
 def iter_python_files(project_root: Path):
     """Yield Python files, excluding common generated/cache folders."""
@@ -115,7 +117,12 @@ def main() -> int:
         if not run_step("Ruff", ["ruff", "check", "--no-cache", "."], project_root, env):
             failures += 1
 
-        if not run_step("Pytest", [sys.executable, "-m", "pytest", "-s", "-p", "no:cacheprovider"], project_root, env):
+        if not run_step(
+            "Pytest",
+            [sys.executable, "-m", "pytest", "-s", "-p", "no:cacheprovider"],
+            project_root,
+            env,
+        ):
             failures += 1
     finally:
         shutil.rmtree(run_tmp, ignore_errors=True)

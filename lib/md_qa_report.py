@@ -1,11 +1,15 @@
 import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class MarkdownQAReport:
     """
     Handles the generation of the Markdown QA Report.
     """
-    def __init__(self, output_path, group_name, report_title_str):
+
+    def __init__(self, output_path, group_name, report_title_str, water_year):
         """
         Initializes the Markdown report generator.
 
@@ -17,8 +21,8 @@ class MarkdownQAReport:
         self.output_path = output_path
         self.group_name = group_name
         self.report_title_str = report_title_str
-        date_stamp = datetime.datetime.now().strftime("%Y%m%d")
-        self.filename = self._make_safe(f"{group_name}_{report_title_str}_{date_stamp}.md")
+        date_stamp = datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Y%m%d")
+        self.filename = self._make_safe(f"{group_name}_{report_title_str}_{water_year}_{date_stamp}.md")
         self.report_path = output_path / self.filename
         self.content = ""
 
@@ -26,7 +30,20 @@ class MarkdownQAReport:
         """Sanitizes a filename string."""
         return filename.replace(" ", "_").replace("'", "").replace(":", "").replace("/", "-")
 
-    def create_report(self, data_summaries, plot_collection, input_filename, start_dt, end_dt, plot_definitions, data_summary_definitions, group_id, data_date, data_url=None, left_justify_columns=None):
+    def create_report(
+        self,
+        data_summaries,
+        plot_collection,
+        input_filename,
+        start_dt,
+        end_dt,
+        plot_definitions,
+        data_summary_definitions,
+        group_id,
+        data_date,
+        data_url=None,
+        left_justify_columns=None,
+    ):
         """
         Assembles and writes the Markdown report.
 
@@ -63,9 +80,9 @@ class MarkdownQAReport:
         self._add_summary_tables(data_summaries, data_summary_definitions)
         self._add_plots(plot_collection, plot_definitions)
 
-        with open(self.report_path, "w", encoding="utf-8") as f:
+        with self.report_path.open("w", encoding="utf-8") as f:
             f.write(self.content)
-        print(f"QA Report saved to {self.report_path}")
+        logger.info("QA Report saved to %s", self.report_path)
 
     def _add_glossary(self):
         """Adds the glossary section to the Markdown content."""
@@ -89,7 +106,10 @@ class MarkdownQAReport:
             if summary_df.empty:
                 self.content += "No data supplied that supports this summary.\n\n"
                 continue
-            elif summary_name in data_summary_definitions and "note" in data_summary_definitions[summary_name]:
+            elif (
+                summary_name in data_summary_definitions
+                and "note" in data_summary_definitions[summary_name]
+            ):
                 self.content += f"{data_summary_definitions[summary_name]['note']}\n\n"
             self.content += f"*Source Table: {table_name}*\n\n"
 
@@ -97,9 +117,7 @@ class MarkdownQAReport:
             self.content += "| " + " | ".join(headers) + " |\n"
             self.content += "| " + " | ".join(["---"] * len(headers)) + " |\n"
             for _, row in summary_df.iterrows():
-                row_vals = [
-                    str(x).replace("|", r"\|").replace("\n", "<br>") for x in row.values
-                ]
+                row_vals = [str(x).replace("|", r"\|").replace("\n", "<br>") for x in row.values]
                 self.content += "| " + " | ".join(row_vals) + " |\n"
 
             self.content += "\nDownload CSV\n\n"
@@ -113,7 +131,10 @@ class MarkdownQAReport:
             for plot_series_name in plot_collection:
                 self.content += f"### Figure {plot_counter}: {plot_series_name}\n\n"
                 plot_counter += 1
-                if plot_series_name in plot_definitions and "note" in plot_definitions[plot_series_name]:
+                if (
+                    plot_series_name in plot_definitions
+                    and "note" in plot_definitions[plot_series_name]
+                ):
                     self.content += f"{plot_definitions[plot_series_name]['note']}\n\n"
 
                 if plot_collection[plot_series_name] is None:

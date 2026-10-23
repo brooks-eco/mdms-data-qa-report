@@ -7,3 +7,9 @@ reportlab>=3.6.0
 
 # Excel support for pandas
 openpyxl>=3.0.0
+
+#dotenv
+python-dotenv>=1.0.0
+
+#requests
+requests>=2.28.0
