@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from config import get_config
+from config import select_config
 from data_summary import SummaryInputError, generate_effort_summaries, validate_summary_inputs
 from lib.md_qa_report import MarkdownQAReport
 from lib.pdf_qa_report import PDFQAReport
@@ -28,7 +28,7 @@ def _write_reports(
     plot_collection,
     data_date,
 ):
-    water_year = f"{config.start_date.year-2000}{config.end_date.year-2000}"
+    water_year = f"{config.start_date.year - 2000}{config.end_date.year - 2000}"
 
     if config.create_markdown_report:
         for summary_name, (_, summary_df) in data_summaries.items():
@@ -53,7 +53,9 @@ def _write_reports(
             left_justify_columns=getattr(config, "left_justify_columns", None),
         )
 
-    pdf_report = PDFQAReport(output_path, group_name, group_long_name, config.report_title, water_year)
+    pdf_report = PDFQAReport(
+        output_path, group_name, group_long_name, config.report_title, water_year
+    )
     pdf_report.create_report(
         data_summaries,
         plot_collection,
@@ -70,9 +72,12 @@ def _write_reports(
 
 
 def main():
-    """Load configured data and generate its QA reports."""
+    """Select configuration, load data, and generate its QA reports."""
     try:
-        config = get_config()
+        config = select_config()
+    except (EOFError, KeyboardInterrupt):
+        print("\nCancelled.")
+        return
     except ValueError as error:
         logger.error("%s", error)
         return
@@ -114,7 +119,7 @@ def main():
 
         data_source = (
             f"<b>{config.input_file}</b>"
-            if Path(config.input_file).suffix.startswith(".xls")
+            if Path(config.input_file).suffix.lower().startswith(".xls")
             else "MDMS data reports: "
             + ", ".join([f"<b>{shortcode}</b>" for shortcode in config.mdms_reports.values()])
         )

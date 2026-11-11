@@ -110,9 +110,9 @@ def create_single_scatter_plot(
         ax.scatter(x_values, y_values, alpha=0.8)
 
     if is_numeric_dtype(df[x_col]):
-        ax.set_xlim(xmin=x_values.max()/-20, xmax=x_values.max()*1.05)
+        ax.set_xlim(xmin=x_values.max() / -20, xmax=x_values.max() * 1.05)
     if is_numeric_dtype(df[y_col]):
-        ax.set_ylim(ymin=y_values.max()/-20, ymax=y_values.max()*1.05)
+        ax.set_ylim(ymin=y_values.max() / -20, ymax=y_values.max() * 1.05)
 
     if x_categories is not None:
         ax.set_xticks(range(len(x_categories)), labels=[str(category) for category in x_categories])

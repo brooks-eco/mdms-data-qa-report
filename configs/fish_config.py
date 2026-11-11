@@ -40,7 +40,7 @@ class FishQAReportConfig(BaseQAReportConfig):
         "FishAge": "fish-age",
     }
 
-    # Prepare data table  - need a generic python way to define these joins (e.g. dictionary) and a function to do the joins based on the dictionary. This will allow us to easily add more tables and joins in the future without changing the code structure.
+    # Workbook columns
     # FishSurveyEffort: SamplePointName	SampleDate	SampleType	SampleNumber	StartDateTime	EndDateTime	TotalTripSamples	Pooled	SampleDurationSec	SeineArea	CompDataID	Comment
     # FishAdultCatch: SamplePointName	SampleDate	SampleType	SampleNumber	ScientificName	Count	ObservedCount	Comment
     # FishAge: SamplePointName	SampleDate	SampleType	SampleNumber	IndividualID	ScientificName	TotalLength	ForkLength	Weight	AgeAdult	AgeLarvae	Comment
@@ -162,7 +162,7 @@ class FishQAReportConfig(BaseQAReportConfig):
                 "table": "FishLengthWeight",
                 "group_by": ["ScientificName"],
                 "summary": {"TotalLength": "count", "ForkLength": "count", "Weight": "count"},
-                "sort": [["TotalLength", "count", "desc"],["ForkLength", "count", "desc"]],
+                "sort": [["TotalLength", "count", "desc"], ["ForkLength", "count", "desc"]],
                 "skip_missmatch": True,
             },
             "LengthWeight (field-measures): Total Length summary per species": {

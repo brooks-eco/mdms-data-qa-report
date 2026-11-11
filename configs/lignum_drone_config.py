@@ -90,7 +90,6 @@ class LignumDroneQAReportConfig(BaseQAReportConfig):
                 "new_column_name": "MLTotalCover",
                 "summary": {"MLTotalCover": "sum"},
             },
-
         }
     )
 

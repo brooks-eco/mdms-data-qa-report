@@ -34,6 +34,7 @@ class WaterbirdQAReportConfig(BaseQAReportConfig):
         "WaterbirdCounts": "waterbird-survey",
     }
 
+    # Workbook columns
     # WaterbirdTripGrouping GroupName	TripID	StartDate	EndDate
     # WaterbirdSurveys GroupName	TripID	SamplePointName	VisitDate	ReplicateNumber	StartTime	EndTime	Observers	SurveyMethod	WateringStage	InundatedArea	InundationSource	IncludesCew	AirTemp	Rain	CloudCoverPercent	WindSpeed	WindDirection	SurveyCoverage	Disturbance	CompDataID	Comment
     # WaterbirdCounts GroupName	SamplePointName	VisitDate	ReplicateNumber	ScientificName	ObsType	TotalCount	BroodsNests	BreedingNotes	CountAccuracy	Comment
@@ -181,9 +182,9 @@ class WaterbirdQAReportConfig(BaseQAReportConfig):
                 "color": "SamplePointName",
                 "Legend": True,
             },
-            "Most common 15 taxa at each site (SamplePointName) across all dates": {
+            "Most common 15 taxa observed at each site (SamplePointName) across all dates": {
                 "note": (
-                    "Guidance: Dots are individual replicates across all dates. This allows you to visualise variability "
+                    "Guidance: Dots are individual replicates across all dates for observed counts only. This allows you to visualise variability "
                     "in abundance through time at the site. Check for rare species with high counts and common species with "
                     "unexpectedly low counts. The x-axis reveals the combined range that will "
                     "vary among sampling locations. Compare to your knowledge (and data) for the sites. "
@@ -200,6 +201,7 @@ class WaterbirdQAReportConfig(BaseQAReportConfig):
                 "Legend": False,
                 "y_axis_title": False,
                 # "aggregate_function": "mean",  # may also want min, max, count
+                "filter": {"ObsType": {"==": "observed"}},
             },
             "Summary of 'InundatedArea' and eWaterTiming for each site survey": {
                 "note": (

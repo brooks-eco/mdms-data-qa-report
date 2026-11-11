@@ -185,7 +185,9 @@ class PDFQAReport:
         self.report_title_str = report_title_str
         # get date-time stamp to include in filename
         date_stamp = datetime.datetime.now(tz=datetime.UTC).astimezone().strftime("%Y%m%d")
-        self.filename = self._make_safe(f"{group_name}_{report_title_str}_{water_year}_{date_stamp}.pdf")
+        self.filename = self._make_safe(
+            f"{group_name}_{report_title_str}_{water_year}_{date_stamp}.pdf"
+        )
         self.pdf_report_path = output_path / self.filename
         self.water_year = water_year
 

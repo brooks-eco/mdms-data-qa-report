@@ -39,7 +39,7 @@ class FishLarvaeQAReportConfig(BaseQAReportConfig):
         "FishLarvaeCounts": "fish-larvae",
     }
 
-    # Prepare data table  - need a generic python way to define these joins (e.g. dictionary) and a function to do the joins based on the dictionary. This will allow us to easily add more tables and joins in the future without changing the code structure.
+    # Workbook columns
     # LarvaeSurveyEffort: GroupName	SamplePointName	SampleDate	SampleType	SampleNumber	StartDateTime	EndDateTime	TotalTripSamples	Pooled	SampleDurationSec	VolumeFiltered	QualityVolumeFiltered	Turbidity	QualityTurbidity	CompDataID	Comment
     # FishLarvaeCounts: SamplePointName	SampleDate	SampleType	SampleNumber	ScientificName	Count	Comment
 

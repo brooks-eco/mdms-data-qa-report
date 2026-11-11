@@ -43,6 +43,7 @@ class VegQAReportConfig(BaseQAReportConfig):
 
     data_url = "https://mdms.essolutions.com.au/workbooks/download/5"
 
+    # Workbook columns
     # VegTripGrouping: TripID	startDate	endDate	totalPlotsSampled	totalTransectsSampled
     # VegCommunitySurvey: TripID	SamplingUnitID	SampleDate	CanopyCover	LitterCover	LichenMossesCover	BareGroundCover	DeadTreeCover	LogCover	PlantBases	PercentInundated	WaterDepth	QualityDepth	SoilMoisture	DurationDry	QualityDurationDry	MaxDepthPrev	QualityMaxDepthPrev	DurationPrevInundation	QualityPrevInundation	Comment
     # VegSpeciesAbundance: SamplingUnitID	SampleDate	Stratum	ScientificName	PercentCover	Comment
@@ -65,7 +66,10 @@ class VegQAReportConfig(BaseQAReportConfig):
                 "right": "VegSpeciesAbundance",
                 "on": ["SamplingUnitID", "SampleDate"],
                 "how": "left",
-                "summary": {"SpeciesRecordCount": {"ScientificName": "count"},"TotalSpeciesCover": {"PercentCover": "sum"}},
+                "summary": {
+                    "SpeciesRecordCount": {"ScientificName": "count"},
+                    "TotalSpeciesCover": {"PercentCover": "sum"},
+                },
             },
             {
                 "left": "VegSpeciesAbundance",
@@ -285,11 +289,10 @@ class VegQAReportConfig(BaseQAReportConfig):
                     "Check this matches your field program and there are no surveys out of place or "
                     "missing (may be hard to see in plots but you can check dates against Table 4 & 5 above). "
                     "Surveys with zero species represent sampling effort records that have no data (Same as Table 13)"
-
                 ),
                 "type": "scatter",
                 "table": "VegCommunitySurvey",
-                #"group_by": ["SamplePointName","ReplicateNumber"], #dont group
+                # "group_by": ["SamplePointName","ReplicateNumber"], #dont group
                 "x": "SampleDate",
                 "y": "SpeciesRecordCount",
                 "color": "SamplePointName",

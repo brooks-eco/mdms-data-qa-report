@@ -304,6 +304,26 @@ def test_load_data_reads_and_filters_an_excel_workbook(vegetation_workbook: Path
     ]
 
 
+def test_load_data_accepts_uppercase_workbook_extension(vegetation_workbook: Path) -> None:
+    workbook = vegetation_workbook.rename(vegetation_workbook.with_suffix(".XLSX"))
+
+    result, _ = load_data(
+        filepath=workbook,
+        group_name="LAC",
+        group_id=20,
+        filter_date=False,
+        start=None,
+        end=None,
+        mdms_reports={},
+    )
+
+    assert result is not None
+    assert result["LAC"]["VegCommunitySurvey"]["SamplingUnitID"].tolist() == [
+        "LAC-P1",
+        "LAC-OLD",
+    ]
+
+
 @pytest.mark.mdms
 def test_load_data_reads_known_recruitment_data_from_mdms() -> None:
     if os.getenv("RUN_MDMS_INTEGRATION_TESTS") != "1":

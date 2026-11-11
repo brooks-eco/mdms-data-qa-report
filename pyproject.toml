@@ -41,6 +41,7 @@ packages = []  # Tells setuptools: "Do not install any local modules"
 [tool.pytest.ini_options]
 pythonpath = "."
 testpaths = ["tests"]
+addopts = "--basetemp=.tmp/pytest -p no:cacheprovider"
 markers = [
     "mdms: tests that query the live MDMS service (enable with RUN_MDMS_INTEGRATION_TESTS=1)",
 ]

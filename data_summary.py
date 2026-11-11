@@ -122,7 +122,6 @@ def generate_effort_summaries(joined_dfs, summaries_config, group_name):
                             for col, agg, direction in sort_specification
                         ]
 
-
         summary_df = df.groupby(group_by_cols).agg(summary_funcs).reset_index()
 
         if isinstance(summary_df.columns, pd.MultiIndex):
@@ -257,7 +256,7 @@ def _apply_qa_checks(summary_df, column_functions, config):
 
         if function == "nunique" and "ScientificName" in column:
             qa_outliers(column, summary_df)
-        if function in {"count", "sum", "mean","max"}:
+        if function in {"count", "sum", "mean", "max"}:
             if not zero_check_done and "ScientificName" in summary_df.columns:
                 zero_check_done = _check_zero_species_count(
                     summary_df, column, original_column, function
@@ -324,7 +323,11 @@ def _check_unique_count(summary_df, column, original_column, function):
 
 def _check_zero_species_count(summary_df, column, original_column, function):
     # if the count, sum or mean is 0 the ScientificName should begin with "no " as in "no plants", "no fish", "no waterbirds"
-    if "ScientificName" not in summary_df.columns  or function not in {"count", "sum", "mean"} or column.endswith("records") :
+    if (
+        "ScientificName" not in summary_df.columns
+        or function not in {"count", "sum", "mean"}
+        or column.endswith("records")
+    ):
         return False
     qa_column = f"QA Check\n{column}\nzero values\nfor species"
     summary_df[qa_column] = ""
@@ -394,7 +397,7 @@ def qa_outliers(
 def qa_outliers_iqr(column, summary_df):  # noqa: N802
     """Annotate outliers using skewness-adjusted IQR fences."""
     valid_values = pd.to_numeric(summary_df[column], errors="coerce").dropna()
-    if len(valid_values) < 3: #need at least 3 counts to assess outlier
+    if len(valid_values) < 3:  # need at least 3 counts to assess outlier
         return None
 
     q1, q3 = np.percentile(valid_values, [25, 75])
@@ -495,5 +498,3 @@ def qa_outliers_skewed(column: str, summary_df: pd.DataFrame, alpha=0.05):
     # Write back aligned by index
     summary_df.loc[valid_series.index, qa_column] = results
     return qa_column
-
-

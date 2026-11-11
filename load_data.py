@@ -252,7 +252,7 @@ def load_data(
 ):
     """Load normalized data through the workbook or MDMS pathway."""
     filepath = Path(filepath)
-    if filepath.suffix.startswith(".xls"):
+    if filepath.suffix.lower().startswith(".xls"):
         data_date = _data_timestamp(filepath)
         return load_workbook_data(
             filepath,

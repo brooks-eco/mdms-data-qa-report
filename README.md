@@ -51,6 +51,22 @@ The script is configured via dataclasses found in the `configs` directory. Each 
 
 execution script: `python QA_report.py`
 
+At startup, use the menu to select:
+
+1. A monitoring group, by number or group code (for example, `LAC`).
+2. An MDMS data type (`vegetation`, `fish`, `waterbirdsurvey`, `fishlarvae`, or
+   `lignumdrone`), by number or name; or choose **Excel workbook** and enter its
+   filename or path.
+
+Bare workbook filenames are read from the configured `workbooks` directory.
+Relative paths are resolved from the current working directory; absolute paths
+and quoted paths containing spaces are also accepted. Workbook names must begin
+with the data type, for example `Fish_20260223111704.xlsx`.
+
+Enter `q` at any prompt to cancel. Selections apply to the current run; there is
+no need to edit `testing_group_name` or `input_file` in `config.py`. Other settings,
+including the reporting dates, continue to come from the configuration dataclasses.
+
 ## Processing Environment
 
 Python.  Requirements (key libraries)
